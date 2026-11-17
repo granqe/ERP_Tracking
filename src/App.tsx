@@ -429,10 +429,8 @@ export function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <TopBar
         currentUser={currentUser}
-        allUsers={users}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onSwitchUser={handleLoginOrSwitch}
         onOpenNewTicket={() => setIsNewTicketOpen(true)}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         onLogout={handleLogout}

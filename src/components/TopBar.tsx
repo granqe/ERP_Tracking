@@ -15,10 +15,8 @@ export type ActiveTab = 'pm_overview' | 'work_board';
 
 interface TopBarProps {
   currentUser: User;
-  allUsers: User[];
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
-  onSwitchUser: (user: User) => void;
   onOpenNewTicket: () => void;
   onOpenTeamModal: () => void;
   onLogout: () => void;
@@ -26,28 +24,24 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({
   currentUser,
-  allUsers,
   activeTab,
   onTabChange,
-  onSwitchUser,
   onOpenNewTicket,
   onOpenTeamModal,
   onLogout,
 }) => {
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setSwitcherOpen(false);
+        setMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const activeUsers = allUsers.filter((u) => u.active);
 
   // Stil i unifikuar për të gjithë butonat e shiritit
   const btnCore =
@@ -119,7 +113,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             </nav>
           </div>
 
-          {/* Right Actions: New Ticket + User Switcher + Logout */}
+          {/* Right Actions: New Ticket + User Profile + Logout */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -134,7 +128,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
-                onClick={() => setSwitcherOpen((v) => !v)}
+                onClick={() => setMenuOpen((v) => !v)}
                 className={`${baseBtn} gap-2 border border-slate-200 bg-white pl-1 pr-2 text-left hover:border-slate-300 hover:bg-slate-50`}
               >
                 <span
@@ -156,67 +150,50 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               </button>
 
-              {switcherOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
-                  <div className="px-2.5 py-1.5 border-b border-slate-100 mb-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                      Ndërro Llogarinë
-                    </p>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto custom-scrollbar space-y-0.5">
-                    {activeUsers.map((u) => {
-                      const isSelected = u.id === currentUser.id;
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            onSwitchUser(u);
-                            setSwitcherOpen(false);
-                          }}
-                          className={`w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
-                            isSelected
-                              ? 'bg-blue-50 text-blue-900'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
+                  <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                      style={{ backgroundColor: currentUser.avatar_color }}
+                    >
+                      {getInitials(currentUser.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {currentUser.name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        @{currentUser.username}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${getRoleBadgeClass(
+                            currentUser.role
+                          )}`}
                         >
-                          <div
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
-                            style={{ backgroundColor: u.avatar_color }}
-                          >
-                            {getInitials(u.name)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold">
-                              {u.name}
-                            </p>
-                            <p className="truncate text-[11px] text-slate-500">
-                              {u.department}
-                            </p>
-                          </div>
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
-                              u.role
-                            )}`}
-                          >
-                            {u.role}
+                          {currentUser.role}
+                        </span>
+                        {currentUser.department && (
+                          <span className="truncate text-[11px] text-slate-500">
+                            {currentUser.department}
                           </span>
-                        </button>
-                      );
-                    })}
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-end px-1">
+                  <div className="mt-2 pt-2 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => {
-                        setSwitcherOpen(false);
+                        setMenuOpen(false);
                         onLogout();
                       }}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      <span>Dil</span>
+                      <span>Dil nga llogaria</span>
                     </button>
                   </div>
                 </div>
