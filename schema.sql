@@ -5,11 +5,12 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Tabela e Përdoruesve (Staf, Programerë, Menaxher)
+-- 1. Tabela e Përdoruesve (Staf, Programerë, Menaxher / Superadmin)
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('Staf', 'Programer', 'Menaxher')),
   department TEXT NOT NULL,
   specialty TEXT,
@@ -139,9 +140,20 @@ CREATE POLICY "Akses i hapur demo - tickets" ON public.tickets FOR ALL USING (tr
 CREATE POLICY "Akses i hapur demo - ticket_events" ON public.ticket_events FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================================
--- KONFIGURIMI FILLESTAR I MODULEVE & FAZAVE (PA TË DHËNA DEMO)
--- Përdoruesi i parë Menaxher regjistrohet direkt nga ekrani i hyrjes në aplikacion.
+-- SUPERADMIN & KONFIGURIMI FILLESTAR I MODULEVE & FAZAVE
 -- ============================================================================
+
+INSERT INTO public.users (name, username, password_hash, role, department, specialty, avatar_color)
+VALUES (
+  'Granit Tahiraj',
+  'granittahiraj',
+  encode(digest('Graniti123!', 'sha256'), 'hex'),
+  'Menaxher',
+  'Menaxhim Projekti',
+  'Superadmin',
+  '#0f172a'
+)
+ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO public.erp_modules (name, description, rollout_phase, is_default) VALUES
   ('Financa & TVSH', 'Llogaritja e TVSH-së, bilancet dhe mbyllja mujore', 3, true),

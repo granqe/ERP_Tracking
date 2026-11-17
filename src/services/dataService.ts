@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { hashPassword } from '../utils/auth';
 import type {
   ErpModule,
   EventType,
@@ -299,14 +300,28 @@ export async function addComment(
 }
 
 export async function upsertUser(
-  userInput: Omit<User, 'id' | 'created_at'> & { id?: string }
+  userInput: Omit<User, 'id' | 'created_at' | 'password_hash'> & {
+    id?: string;
+    password?: string;
+    password_hash?: string;
+  }
 ): Promise<User> {
   const client = requireSupabase();
   const nowIso = new Date().toISOString();
-  const user: User = {
+
+  let passwordHash = userInput.password_hash;
+  if (userInput.password && userInput.password.trim()) {
+    passwordHash = await hashPassword(userInput.password);
+  }
+  if (!passwordHash) {
+    throw new Error('Fjalëkalimi është i detyrueshëm për përdoruesin e ri.');
+  }
+
+  const user = {
     id: userInput.id ?? generateId(),
     name: userInput.name.trim(),
-    email: userInput.email.trim().toLowerCase(),
+    username: userInput.username.trim().toLowerCase(),
+    password_hash: passwordHash,
     role: userInput.role,
     department: userInput.department,
     specialty: userInput.specialty?.trim() || '',

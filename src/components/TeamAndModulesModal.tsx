@@ -23,7 +23,11 @@ interface TeamAndModulesModalProps {
   phases: RolloutPhase[];
   onClose: () => void;
   onSaveUser: (
-    user: Omit<User, 'id' | 'created_at'> & { id?: string }
+    user: Omit<User, 'id' | 'created_at' | 'password_hash'> & {
+      id?: string;
+      password?: string;
+      password_hash?: string;
+    }
   ) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onSaveModule: (
@@ -63,7 +67,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   // User form state
   const [editingUserId, setEditingUserId] = useState<string | undefined>();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('Staf');
   const [department, setDepartment] = useState(DEPARTMENTS[1]);
   const [specialty, setSpecialty] = useState('');
@@ -85,7 +90,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
       const q = userSearch.toLowerCase();
       return (
         u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
         u.department.toLowerCase().includes(q)
       );
     }
@@ -95,7 +100,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const resetUserForm = () => {
     setEditingUserId(undefined);
     setName('');
-    setEmail('');
+    setUsername('');
+    setPassword('');
     setRole('Staf');
     setDepartment(DEPARTMENTS[1]);
     setSpecialty('');
@@ -105,7 +111,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const handleEditUser = (u: User) => {
     setEditingUserId(u.id);
     setName(u.name);
-    setEmail(u.email);
+    setUsername(u.username);
+    setPassword('');
     setRole(u.role);
     setDepartment(u.department);
     setSpecialty(u.specialty || '');
@@ -117,7 +124,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     await onSaveUser({
       id: u.id,
       name: u.name,
-      email: u.email,
+      username: u.username,
+      password_hash: u.password_hash,
       role: u.role,
       department: u.department,
       specialty: u.specialty,
@@ -128,14 +136,17 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
 
   const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
+    if (!name.trim() || !username.trim()) return;
+    if (!editingUserId && !password.trim()) return;
     setSavingUser(true);
     try {
       const existing = users.find((u) => u.id === editingUserId);
       await onSaveUser({
         id: editingUserId,
         name,
-        email,
+        username,
+        password: password.trim() || undefined,
+        password_hash: existing?.password_hash,
         role,
         department,
         specialty,
@@ -193,7 +204,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
               Menaxhimi i Përdoruesve & Moduleve të ERP-së
             </h2>
             <p className="text-xs text-slate-500">
-              Shtoni, modifikoni, aktivizoni/çaktivizoni ose fshini përdoruesit dhe modulet
+              Shtoni, modifikoni, aktivizoni/çaktivizoni ose fshini përdoruesit
+              (pa email — me emër përdoruesi dhe fjalëkalim)
             </p>
           </div>
           <button
@@ -276,18 +288,36 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    required
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="erion.berisha@kompania.al"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Emri i Përdoruesit *
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="p.sh. erion.berisha"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      {editingUserId
+                        ? 'Fjalëkalim i ri (opsional)'
+                        : 'Fjalëkalimi *'}
+                    </label>
+                    <input
+                      required={!editingUserId}
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={editingUserId ? 'Lëre bosh nëse s’ndryshon' : '••••••••'}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
@@ -362,7 +392,6 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
 
               {/* Users List */}
               <div className="lg:col-span-7 space-y-3">
-                {/* Search & Role Filter */}
                 <div className="flex flex-wrap gap-2">
                   <div className="relative flex-1 min-w-[180px]">
                     <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -430,7 +459,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                               )}
                             </div>
                             <p className="truncate text-xs text-slate-500">
-                              {u.email} • {u.department}
+                              @{u.username} • {u.department}
                               {u.specialty ? ` (${u.specialty})` : ''}
                             </p>
                           </div>
@@ -479,8 +508,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                             <Edit3 className="h-4 w-4" />
                           </button>
 
-                          {!isSelf && (
-                            isConfirmingDelete ? (
+                          {!isSelf &&
+                            (isConfirmingDelete ? (
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
@@ -509,8 +538,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-                            )
-                          )}
+                            ))}
                         </div>
                       </div>
                     );

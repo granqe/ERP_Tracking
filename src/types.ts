@@ -36,7 +36,8 @@ export type EventType =
 export interface User {
   id: string;
   name: string;
-  email: string;
+  username: string;
+  password_hash?: string;
   role: UserRole;
   department: string;
   specialty?: string;

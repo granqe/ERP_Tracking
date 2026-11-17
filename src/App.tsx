@@ -156,13 +156,18 @@ export function App() {
     setSelectedTicketId(null);
   };
 
-  const handleBootstrapAdmin = async (name: string, email: string) => {
+  const handleBootstrapAdmin = async (
+    name: string,
+    username: string,
+    password: string
+  ) => {
     const created = await upsertUser({
       name,
-      email,
+      username,
+      password,
       role: 'Menaxher',
       department: 'Menaxhim Projekti',
-      specialty: 'Drejtues i Migrimit ERP',
+      specialty: 'Superadmin',
       avatar_color: '#0f172a',
       active: true,
     });
@@ -330,7 +335,11 @@ export function App() {
   };
 
   const handleSaveUser = async (
-    userInput: Omit<User, 'id' | 'created_at'> & { id?: string }
+    userInput: Omit<User, 'id' | 'created_at' | 'password_hash'> & {
+      id?: string;
+      password?: string;
+      password_hash?: string;
+    }
   ) => {
     const saved = await upsertUser(userInput);
     setUsers((prev) => {

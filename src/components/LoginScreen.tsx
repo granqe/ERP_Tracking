@@ -3,26 +3,28 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Code2,
   Database,
+  KeyRound,
   Lock,
-  Mail,
   RefreshCw,
   ShieldCheck,
-  UserCheck,
+  User as UserIcon,
   UserPlus,
-  Users,
 } from 'lucide-react';
 import type { DbHealthStatus } from '../lib/supabase';
 import type { User } from '../types';
-import { getInitials, getRoleBadgeClass } from '../utils/formatters';
+import { hashPassword } from '../utils/auth';
 
 interface LoginScreenProps {
   users: User[];
   dbHealth: DbHealthStatus;
   onRetryConnection: () => void;
   onLogin: (user: User) => void;
-  onBootstrapAdmin: (name: string, email: string) => Promise<void>;
+  onBootstrapAdmin: (
+    name: string,
+    username: string,
+    password: string
+  ) => Promise<void>;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -32,100 +34,74 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
   onBootstrapAdmin,
 }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
-  // First-time production admin setup
+  // First-time production admin setup (only shown if users table is completely empty)
   const [adminName, setAdminName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   const activeUsers = users.filter((u) => u.active);
-  const managers = activeUsers.filter((u) => u.role === 'Menaxher');
-  const developers = activeUsers.filter((u) => u.role === 'Programer');
-  const staff = activeUsers.filter((u) => u.role === 'Staf');
 
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const found = activeUsers.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-    );
-    if (!found) {
-      setError(
-        'Ky email nuk u gjet në listën e përdoruesve aktivë. Kontaktoni Menaxherin e Projektit.'
-      );
+    if (!username.trim() || !password) {
+      setError('Ju lutem shkruani emrin e përdoruesit dhe fjalëkalimin.');
       return;
     }
+
+    setLoggingIn(true);
     setError('');
-    onLogin(found);
+    try {
+      const normalized = username.trim().toLowerCase();
+      const found = users.find(
+        (u) => u.username.toLowerCase() === normalized
+      );
+
+      if (!found) {
+        setError('Emri i përdoruesit ose fjalëkalimi është i pasaktë.');
+        return;
+      }
+
+      if (!found.active) {
+        setError(
+          'Kjo llogari është çaktivizuar. Kontaktoni Superadmin-in.'
+        );
+        return;
+      }
+
+      const inputHash = await hashPassword(password);
+      if (found.password_hash !== inputHash) {
+        setError('Emri i përdoruesit ose fjalëkalimi është i pasaktë.');
+        return;
+      }
+
+      onLogin(found);
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
   const handleCreateFirstAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminName.trim() || !adminEmail.trim()) return;
+    if (!adminName.trim() || !adminUsername.trim() || !adminPassword) return;
     setCreatingAdmin(true);
     try {
-      await onBootstrapAdmin(adminName, adminEmail);
+      await onBootstrapAdmin(adminName, adminUsername, adminPassword);
     } finally {
       setCreatingAdmin(false);
     }
   };
 
-  const renderGroup = (
-    title: string,
-    subtitle: string,
-    icon: React.ReactNode,
-    groupUsers: User[]
-  ) => {
-    if (groupUsers.length === 0) return null;
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            {icon}
-            <span>{title}</span>
-          </div>
-          <span className="text-[11px] text-slate-400">{subtitle}</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {groupUsers.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => onLogin(u)}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:shadow-sm active:scale-[0.99]"
-            >
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-xs"
-                style={{ backgroundColor: u.avatar_color }}
-              >
-                {getInitials(u.name)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-blue-700">
-                  {u.name}
-                </p>
-                <p className="truncate text-xs text-slate-500">{u.department}</p>
-              </div>
-              <span
-                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
-                  u.role
-                )}`}
-              >
-                {u.role}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-4xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          {/* Left Panel: Brand & Email Login */}
+          {/* Left Panel: Brand */}
           <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl bg-slate-900 p-8 text-white shadow-xl">
             <div>
               <div className="flex items-center gap-3 mb-6">
@@ -145,48 +121,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <h2 className="text-2xl font-bold leading-snug mb-3">
                 Mirë se vini në qendrën e migrimit të ERP-së
               </h2>
-              <p className="text-sm text-slate-300 leading-relaxed mb-8">
-                Raportoni gabimet teknike, gjurmoni bllokimet e migrimeve CSV dhe
-                konfirmoni testimet (UAT) me izolim të plotë sipas rolit.
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Hyni me llogarinë tuaj për të raportuar probleme teknike, për të
+                ndjekur bllokimet e migrimeve dhe për të konfirmuar testimet
+                (UAT).
               </p>
-
-              {dbHealth.connected && activeUsers.length > 0 && (
-                <form onSubmit={handleManualSubmit} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="login-email"
-                      className="block text-xs font-medium text-slate-300 mb-1.5"
-                    >
-                      Hyni me adresën tuaj të email-it
-                    </label>
-                    <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <input
-                        id="login-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="emri.mbiemri@kompania.al"
-                        className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <p className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2 text-xs text-rose-200">
-                      {error}
-                    </p>
-                  )}
-
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.99]"
-                  >
-                    <span>Hyr në Sistem</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </form>
-              )}
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
@@ -209,10 +148,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </div>
 
-          {/* Right Panel: Connection Status / First Admin Setup / Active Users */}
-          <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white/95 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+          {/* Right Panel: Connection Status / First Admin Setup / Username+Password Login */}
+          <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex flex-col justify-center">
             {!dbHealth.connected ? (
-              <div className="space-y-5 my-auto">
+              <div className="space-y-5">
                 <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
                   <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-0.5" />
                   <div>
@@ -227,7 +166,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3 text-xs text-slate-700">
                   <p className="font-bold text-slate-900 text-sm">
-                    Si ta përfundoni lidhjen në Vercel (Modaliteti Produksion):
+                    Si ta përfundoni lidhjen në Vercel:
                   </p>
                   <ol className="list-decimal list-inside space-y-2 leading-relaxed">
                     <li>
@@ -262,16 +201,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </button>
               </div>
             ) : activeUsers.length === 0 ? (
-              <div className="space-y-5 my-auto">
+              <div className="space-y-5">
                 <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
                     <h3 className="text-sm font-bold text-emerald-950">
-                      Databaza është e lidhur! (0 të dhëna demo)
+                      Databaza është e lidhur!
                     </h3>
                     <p className="mt-0.5 text-xs text-emerald-800">
                       Regjistroni llogarinë e parë të{' '}
-                      <strong>Menaxherit të Projektit</strong> për të filluar.
+                      <strong>Superadmin / Menaxherit</strong> për të filluar.
                     </p>
                   </div>
                 </div>
@@ -282,7 +221,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 >
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
                     <UserPlus className="h-4 w-4 text-blue-600" />
-                    <span>Krijo Menaxherin e Parë</span>
+                    <span>Krijo Superadmin-in e Parë</span>
                   </div>
 
                   <div>
@@ -294,21 +233,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       type="text"
                       value={adminName}
                       onChange={(e) => setAdminName(e.target.value)}
-                      placeholder="p.sh. Arben Krasniqi"
+                      placeholder="p.sh. Granit Tahiraj"
                       className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Email i Punës *
+                      Emri i Përdoruesit (Username) *
                     </label>
                     <input
                       required
-                      type="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="emri@kompania.al"
+                      type="text"
+                      value={adminUsername}
+                      onChange={(e) => setAdminUsername(e.target.value)}
+                      placeholder="p.sh. granittahiraj"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Fjalëkalimi *
+                    </label>
+                    <input
+                      required
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="••••••••"
                       className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
                     />
                   </div>
@@ -327,34 +280,74 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             ) : (
               <div>
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Zgjidhni Llogarinë Tuaj
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Hyrje në Sistem
                   </h3>
                   <p className="text-sm text-slate-500 mt-1">
-                    Përdoruesit e regjistruar në sistemin e prodhimit.
+                    Vendosni emrin e përdoruesit dhe fjalëkalimin tuaj.
                   </p>
                 </div>
 
-                <div className="space-y-5">
-                  {renderGroup(
-                    'Menaxher i Projektit',
-                    'Akses i plotë',
-                    <UserCheck className="h-3.5 w-3.5 text-slate-700" />,
-                    managers
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="login-username"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Emri i Përdoruesit (Username)
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        id="login-username"
+                        type="text"
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="p.sh. granittahiraj"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="login-password"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Fjalëkalimi
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        id="login-password"
+                        type="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="rounded-xl bg-rose-50 border border-rose-200 px-3.5 py-2.5 text-xs font-medium text-rose-700">
+                      {error}
+                    </div>
                   )}
-                  {renderGroup(
-                    'Programerë / Zhvillues',
-                    'Detyrat teknike & bllokimet',
-                    <Code2 className="h-3.5 w-3.5 text-blue-700" />,
-                    developers
-                  )}
-                  {renderGroup(
-                    'Punonjës / Staf',
-                    'Vetëm tiketat personale',
-                    <Users className="h-3.5 w-3.5 text-teal-700" />,
-                    staff
-                  )}
-                </div>
+
+                  <button
+                    type="submit"
+                    disabled={loggingIn}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <span>
+                      {loggingIn ? 'Duke verifikuar...' : 'Hyr në Sistem'}
+                    </span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </form>
               </div>
             )}
           </div>
