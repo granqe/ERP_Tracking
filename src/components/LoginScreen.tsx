@@ -3,9 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Database,
   KeyRound,
-  Lock,
   RefreshCw,
   ShieldCheck,
   User as UserIcon,
@@ -102,48 +100,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       <div className="mx-auto w-full max-w-4xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Left Panel: Brand */}
-          <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl bg-slate-900 p-8 text-white shadow-xl">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold tracking-tight">
-                    ERP Migration & Bug Tracker
-                  </h1>
-                  <p className="text-xs text-slate-400">
-                    Sistemi i Gjurmimit: QuickBooks → ERP
-                  </p>
-                </div>
+          <div className="lg:col-span-5 flex flex-col justify-center rounded-2xl bg-slate-900 p-8 text-white shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md">
+                <ShieldCheck className="h-6 w-6" />
               </div>
-
-              <h2 className="text-2xl font-bold leading-snug mb-3">
-                Mirë se vini në qendrën e migrimit të ERP-së
-              </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Hyni me llogarinë tuaj për të raportuar probleme teknike, për të
-                ndjekur bllokimet e migrimeve dhe për të konfirmuar testimet
-                (UAT).
-              </p>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <div className="flex items-center gap-2">
-                <Database
-                  className={`h-4 w-4 ${
-                    dbHealth.connected ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                />
-                <span>
-                  {dbHealth.connected
-                    ? 'Produksion • Lidhur me Supabase'
-                    : 'Databaza nuk është e lidhur'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-slate-400">
-                <Lock className="h-3.5 w-3.5" />
-                <span>RBAC Aktiv</span>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight">
+                  ERP Migration & Bug Tracker
+                </h1>
+                <p className="text-xs text-slate-400">
+                  Sistemi i Gjurmimit: QuickBooks → ERP
+                </p>
               </div>
             </div>
           </div>

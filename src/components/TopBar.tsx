@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   ChevronDown,
-  Database,
   Kanban,
   LayoutDashboard,
   LogOut,
@@ -63,10 +62,6 @@ export const TopBar: React.FC<TopBarProps> = ({
               <div className="hidden sm:block">
                 <span className="block text-sm font-bold text-slate-900 leading-none">
                   ERP Migrim & Gjurmues
-                </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-                  <Database className="h-3 w-3 text-emerald-600" />
-                  Produksion • Supabase Live
                 </span>
               </div>
             </div>
