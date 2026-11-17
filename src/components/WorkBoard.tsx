@@ -377,6 +377,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   <th className="py-3 px-4">Tiketa</th>
+                  <th className="py-3 px-3">Raportuesi</th>
                   <th className="py-3 px-3">Moduli & Lloji</th>
                   <th className="py-3 px-3">Prioriteti</th>
                   <th className="py-3 px-3">Statusi</th>
@@ -400,9 +401,6 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                           <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
                             {t.code}
                           </span>
-                          <span className="text-[11px] text-slate-400">
-                            nga {reporter?.name || 'Staf'}
-                          </span>
                         </div>
                         <p className="font-semibold text-slate-900 leading-snug">
                           {t.title}
@@ -414,6 +412,31 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                           </p>
                         )}
                         {renderStaffUatBanner(t)}
+                      </td>
+
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        {reporter ? (
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white shadow-xs"
+                              style={{ backgroundColor: reporter.avatar_color }}
+                            >
+                              {getInitials(reporter.name)}
+                            </span>
+                            <div className="leading-tight">
+                              <p className="text-xs font-semibold text-slate-900">
+                                {reporter.name}
+                              </p>
+                              <p className="text-[11px] text-slate-500">
+                                {reporter.department}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">
+                            I panjohur
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-3 whitespace-nowrap">
