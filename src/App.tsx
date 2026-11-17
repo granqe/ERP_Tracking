@@ -392,7 +392,11 @@ export function App() {
     setPhases((prev) =>
       prev.map((p) => (p.id === updated.id ? updated : p))
     );
-    showToast(`Faza ${phaseId} u përditësua në "${status}".`);
+    showToast(
+      status === 'Përfunduar'
+        ? `Faza ${phaseId} u mbyll zyrtarisht.`
+        : `Faza ${phaseId} u rihap.`
+    );
   };
 
   if (loading) {

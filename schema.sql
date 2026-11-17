@@ -166,9 +166,9 @@ INSERT INTO public.erp_modules (name, description, rollout_phase, is_default) VA
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO public.rollout_phases (id, title, description, status, progress) VALUES
-  (1, '1. Auditimi i Moduleve', 'Verifikimi i strukturës së inventarit, roleve dhe lejeve', 'Përfunduar', 100),
-  (2, '2. Migrimi i Klientëve (Support)', 'Kalimi i kontratave aktive dhe historikut të mirëmbajtjes', 'Aktiv', 72),
-  (3, '3. Kalimi i Financave (QuickBooks -> ERP)', 'Importimi i faturave, TVSH-së dhe gjendjeve kontabël', 'Bllokuar', 45),
-  (4, '4. Testimi Paralel', 'Krahasimi i raporteve dhe faturave PDF mes dy sistemeve', 'Në Pritje', 20),
-  (5, '5. Pagesat Online', 'Aktivizimi i API-së dhe webhook-eve të pagesave në prodhim', 'Në Pritje', 10)
+  (1, '1. Auditimi i Moduleve', 'Verifikimi i strukturës së inventarit, roleve dhe lejeve', 'Në Pritje', 0),
+  (2, '2. Migrimi i Klientëve (Support)', 'Kalimi i kontratave aktive dhe historikut të mirëmbajtjes', 'Në Pritje', 0),
+  (3, '3. Kalimi i Financave (QuickBooks -> ERP)', 'Importimi i faturave, TVSH-së dhe gjendjeve kontabël', 'Në Pritje', 0),
+  (4, '4. Testimi Paralel', 'Krahasimi i raporteve dhe faturave PDF mes dy sistemeve', 'Në Pritje', 0),
+  (5, '5. Pagesat Online', 'Aktivizimi i API-së dhe webhook-eve të pagesave në prodhim', 'Në Pritje', 0)
 ON CONFLICT (id) DO NOTHING;

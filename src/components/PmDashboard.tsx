@@ -8,6 +8,8 @@ import {
   Clock,
   Flame,
   Layers,
+  Lock,
+  RotateCcw,
   ShieldAlert,
   UserCheck,
 } from 'lucide-react';
@@ -115,16 +117,113 @@ export const PmDashboard: React.FC<PmDashboardProps> = ({
 
   const oldestStalled = stalledTasks[0];
 
-  const phaseBadgeStyle = (status: PhaseStatus) => {
+  // Statusi i fazave llogaritet automatikisht nga tiketat e moduleve të secilës fazë.
+  // Vetëm "Përfunduar" ruhet në databazë si miratim zyrtar nga Menaxheri.
+  type PhaseDisplayStatus = PhaseStatus | 'Gati për Mbyllje';
+
+  const isBlocking = (t: Ticket) =>
+    t.status === 'Bllokuar (Blocked)' ||
+    t.priority === 'Kritik (Bllokues)' ||
+    t.type === 'Bllokim Procesi (Blocker)';
+
+  const phaseStats = phases.map((phase) => {
+    const phaseModules = new Set(
+      modules.filter((m) => m.rollout_phase === phase.id).map((m) => m.name)
+    );
+    const phaseTickets = tickets.filter((t) => phaseModules.has(t.module));
+    const total = phaseTickets.length;
+    const closed = phaseTickets.filter(
+      (t) => t.status === 'Mbyllur (Konfirmuar)'
+    ).length;
+    const openList = phaseTickets.filter(
+      (t) => t.status !== 'Mbyllur (Konfirmuar)'
+    );
+    const blocked = openList.filter(isBlocking).length;
+    const started = phaseTickets.some(
+      (t) => t.status !== 'Në Pritje (Backlog)'
+    );
+    const signedOff = phase.status === 'Përfunduar' && openList.length === 0;
+    const reopened = phase.status === 'Përfunduar' && openList.length > 0;
+
+    let status: PhaseDisplayStatus;
+    if (signedOff) status = 'Përfunduar';
+    else if (total === 0) status = 'Në Pritje';
+    else if (blocked > 0) status = 'Bllokuar';
+    else if (openList.length === 0) status = 'Gati për Mbyllje';
+    else if (started) status = 'Aktiv';
+    else status = 'Në Pritje';
+
+    const progress = signedOff
+      ? 100
+      : total === 0
+      ? 0
+      : Math.round((closed / total) * 100);
+
+    return {
+      phase,
+      total,
+      closed,
+      open: openList.length,
+      blocked,
+      status,
+      progress,
+      reopened,
+      canClose: total > 0 && openList.length === 0 && !signedOff,
+    };
+  });
+
+  const phaseBadgeStyle = (status: PhaseDisplayStatus) => {
     switch (status) {
       case 'Përfunduar':
         return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'Gati për Mbyllje':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'Aktiv':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'Bllokuar':
         return 'bg-rose-100 text-rose-800 border-rose-200';
       case 'Në Pritje':
         return 'bg-slate-100 text-slate-600 border-slate-200';
+    }
+  };
+
+  const phaseCardStyle = (status: PhaseDisplayStatus) => {
+    switch (status) {
+      case 'Përfunduar':
+        return 'border-emerald-200 bg-emerald-50/30';
+      case 'Gati për Mbyllje':
+        return 'border-amber-300 bg-amber-50/40';
+      case 'Aktiv':
+        return 'border-blue-300 bg-blue-50/30';
+      case 'Bllokuar':
+        return 'border-rose-300 bg-rose-50/40';
+      case 'Në Pritje':
+        return 'border-slate-200 bg-slate-50/60';
+    }
+  };
+
+  const phaseBarStyle = (status: PhaseDisplayStatus) =>
+    status === 'Bllokuar'
+      ? 'bg-rose-500'
+      : status === 'Përfunduar'
+      ? 'bg-emerald-500'
+      : status === 'Gati për Mbyllje'
+      ? 'bg-amber-500'
+      : 'bg-blue-600';
+
+  const handleClosePhase = (phase: RolloutPhase) => {
+    if (
+      window.confirm(
+        `Konfirmoni mbylljen zyrtare të fazës "${phase.title}"?`
+      )
+    ) {
+      onUpdatePhase(phase.id, 'Përfunduar', 100);
+    }
+  };
+
+  const handleReopenPhase = (phase: RolloutPhase, progress: number) => {
+    if (window.confirm(`Rihapni fazën "${phase.title}"?`)) {
+      onUpdatePhase(phase.id, 'Aktiv', progress);
     }
   };
 
@@ -210,75 +309,100 @@ export const PmDashboard: React.FC<PmDashboardProps> = ({
               <span>Rrugëtimi i Migrimit të ERP-së (Pipeline)</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Klikoni statusin e çdo faze për ta përditësuar drejtpërdrejt nga
-              pamja e menaxherit
+              Statusi dhe përparimi llogariten automatikisht nga tiketat e
+              moduleve të secilës fazë
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          {phases.map((phase) => (
-            <div
-              key={phase.id}
-              className={`rounded-xl border p-3.5 flex flex-col justify-between transition ${
-                phase.status === 'Bllokuar'
-                  ? 'border-rose-300 bg-rose-50/40'
-                  : phase.status === 'Përfunduar'
-                  ? 'border-emerald-200 bg-emerald-50/30'
-                  : phase.status === 'Aktiv'
-                  ? 'border-blue-300 bg-blue-50/30'
-                  : 'border-slate-200 bg-slate-50/60'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1 mb-2">
-                  <select
-                    value={phase.status}
-                    onChange={(e) => {
-                      const nextStatus = e.target.value as PhaseStatus;
-                      const nextProgress =
-                        nextStatus === 'Përfunduar'
-                          ? 100
-                          : nextStatus === 'Në Pritje'
-                          ? 15
-                          : phase.progress;
-                      onUpdatePhase(phase.id, nextStatus, nextProgress);
-                    }}
-                    className={`rounded-md border px-2 py-0.5 text-[10px] font-bold focus:outline-none ${phaseBadgeStyle(
-                      phase.status
-                    )}`}
-                  >
-                    <option value="Përfunduar">Përfunduar</option>
-                    <option value="Aktiv">Aktiv</option>
-                    <option value="Bllokuar">Bllokuar</option>
-                    <option value="Në Pritje">Në Pritje</option>
-                  </select>
-                  <span className="text-xs font-bold text-slate-700">
-                    {phase.progress}%
-                  </span>
+          {phaseStats.map((ps) => {
+            const { phase } = ps;
+            const closeStatus: PhaseDisplayStatus = ps.status;
+            return (
+              <div
+                key={phase.id}
+                className={`rounded-xl border p-3.5 flex flex-col justify-between transition ${phaseCardStyle(
+                  closeStatus
+                )}`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold leading-none ${phaseBadgeStyle(
+                        closeStatus
+                      )}`}
+                    >
+                      {closeStatus}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700">
+                      {ps.progress}%
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 leading-snug">
+                    {phase.title}
+                  </h3>
+                  <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                    {phase.description}
+                  </p>
                 </div>
-                <h3 className="text-xs font-bold text-slate-900 leading-snug">
-                  {phase.title}
-                </h3>
-                <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                  {phase.description}
-                </p>
-              </div>
 
-              <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    phase.status === 'Bllokuar'
-                      ? 'bg-rose-500'
-                      : phase.status === 'Përfunduar'
-                      ? 'bg-emerald-500'
-                      : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${phase.progress}%` }}
-                />
+                <div>
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${phaseBarStyle(
+                        closeStatus
+                      )}`}
+                      style={{ width: `${ps.progress}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-1 text-[10px] text-slate-500">
+                    <span>
+                      {ps.total === 0
+                        ? 'Pa tiketa'
+                        : `${ps.closed}/${ps.total} të mbyllura`}
+                    </span>
+                    {ps.blocked > 0 && (
+                      <span className="font-semibold text-rose-600">
+                        {ps.blocked} bllokime
+                      </span>
+                    )}
+                  </div>
+                  {ps.reopened && (
+                    <p className="mt-1 text-[10px] font-semibold text-amber-700">
+                      U rihap: ka tiketa të reja të hapura
+                    </p>
+                  )}
+
+                  {closeStatus === 'Përfunduar' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReopenPhase(phase, ps.progress)}
+                      className="mt-2.5 inline-flex h-7 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Rihap Fazën</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!ps.canClose}
+                      onClick={() => handleClosePhase(phase)}
+                      title={
+                        ps.canClose
+                          ? 'Mbyll zyrtarisht fazën'
+                          : 'Lejohet kur të gjitha tiketat e fazës janë mbyllur'
+                      }
+                      className="mt-2.5 inline-flex h-7 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                    >
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>Mbyll Fazën</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
