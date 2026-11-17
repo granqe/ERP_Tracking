@@ -125,10 +125,17 @@ export interface CreateTicketInput {
 export async function createTicket(
   input: CreateTicketInput,
   actor: User,
-  existingTickets: Ticket[]
+  existingTickets: Ticket[],
+  allUsers: User[] = []
 ): Promise<{ ticket: Ticket; event: TicketEvent }> {
   const client = requireSupabase();
   const nowIso = new Date().toISOString();
+  const activeDevelopers = allUsers.filter(
+    (u) => u.role === 'Programer' && u.active
+  );
+  const autoAssignee =
+    activeDevelopers.length === 1 ? activeDevelopers[0] : null;
+
   const newTicket: Ticket = {
     id: generateId(),
     code: nextTicketCode(existingTickets),
@@ -139,7 +146,7 @@ export async function createTicket(
     priority: input.priority,
     status: 'Në Pritje (Backlog)',
     created_by: actor.id,
-    assigned_to: null,
+    assigned_to: autoAssignee ? autoAssignee.id : null,
     deadline: null,
     blocker_reason: null,
     resolution_note: null,
@@ -160,7 +167,9 @@ export async function createTicket(
     ticket_id: (data as Ticket).id,
     actor_id: actor.id,
     event_type: 'created',
-    message: `Tiketa u hap nga ${actor.name} (${actor.department}).`,
+    message: autoAssignee
+      ? `Tiketa u hap nga ${actor.name} (${actor.department}) dhe iu delegua automatikisht programerit ${autoAssignee.name}.`
+      : `Tiketa u hap nga ${actor.name} (${actor.department}).`,
   });
   return { ticket: data as Ticket, event: ev };
 }

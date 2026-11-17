@@ -195,10 +195,20 @@ export function App() {
     priority: TicketPriority;
   }) => {
     if (!currentUser) return;
-    const { ticket, event } = await createTicket(input, currentUser, tickets);
+    const { ticket, event } = await createTicket(
+      input,
+      currentUser,
+      tickets,
+      users
+    );
     setTickets((prev) => [ticket, ...prev]);
     setEvents((prev) => [event, ...prev]);
-    showToast(`Tiketa ${ticket.code} u raportua me sukses!`);
+    const assignedDev = users.find((u) => u.id === ticket.assigned_to);
+    showToast(
+      assignedDev
+        ? `Tiketa ${ticket.code} u hap dhe iu delegua automatikisht ${assignedDev.name}!`
+        : `Tiketa ${ticket.code} u raportua me sukses!`
+    );
   };
 
   const handleStatusChange = async (
