@@ -125,10 +125,21 @@ export function getRoleBadgeClass(role: User['role']): string {
  * - Programer: tickets assigned to them OR unassigned tickets, sorted by blocker & priority
  * - Menaxher: ALL tickets
  */
-export function getVisibleTicketsForUser(tickets: Ticket[], user: User): Ticket[] {
+export function getVisibleTicketsForUser(
+  tickets: Ticket[],
+  user: User,
+  allUsers: User[] = []
+): Ticket[] {
   if (user.role === 'Staf') {
+    // Stafi sheh tiketat e veta dhe ato të kolegëve të të njëjtit departament
+    const dept = (user.department || '').trim().toLowerCase();
+    const sameDeptIds = new Set(
+      allUsers
+        .filter((u) => dept !== '' && (u.department || '').trim().toLowerCase() === dept)
+        .map((u) => u.id)
+    );
     return tickets
-      .filter((t) => t.created_by === user.id)
+      .filter((t) => t.created_by === user.id || sameDeptIds.has(t.created_by))
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }
 

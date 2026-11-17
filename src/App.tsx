@@ -178,8 +178,8 @@ export function App() {
   // RBAC Visible Tickets
   const visibleTickets = useMemo(() => {
     if (!currentUser) return [];
-    return getVisibleTicketsForUser(tickets, currentUser);
-  }, [tickets, currentUser]);
+    return getVisibleTicketsForUser(tickets, currentUser, users);
+  }, [tickets, currentUser, users]);
 
   const selectedTicket = useMemo(
     () => visibleTickets.find((t) => t.id === selectedTicketId) || null,

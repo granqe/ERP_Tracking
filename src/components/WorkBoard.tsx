@@ -167,17 +167,10 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             : 'border-slate-200 bg-white text-slate-800'
         }`}
       >
+        {!isStaff && (
         <div className="flex items-center gap-2.5 text-xs sm:text-sm">
           <Lock className="h-4 w-4 shrink-0 opacity-75" />
           <span>
-            {isStaff && (
-              <>
-                <strong>Izolimi i Stafit Aktiv:</strong> Po shihni vetëm
-                tiketat e raportuara nga ju (
-                <span className="font-semibold">{currentUser.name}</span>).
-                Raportimet e kolegëve të tjerë janë të fshehura.
-              </>
-            )}
             {isDev && (
               <>
                 <strong>Hapësira e Programerit:</strong> Detyrat e caktuara për
@@ -194,9 +187,10 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             )}
           </span>
         </div>
+        )}
 
         {/* View Mode Toggle */}
-        <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1">
+        <div className="ml-auto flex items-center rounded-xl border border-slate-200 bg-white p-1">
           <button
             type="button"
             onClick={() => setViewMode('list')}
