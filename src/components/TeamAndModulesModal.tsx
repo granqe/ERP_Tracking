@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
-import { Boxes, Edit3, Plus, UserPlus, Users, X } from 'lucide-react';
+import {
+  Boxes,
+  CheckCircle2,
+  Edit3,
+  Plus,
+  Search,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { DEPARTMENTS } from '../types';
 import type { ErpModule, RolloutPhase, User, UserRole } from '../types';
 import { getInitials, getRoleBadgeClass } from '../utils/formatters';
 
 interface TeamAndModulesModalProps {
   isOpen: boolean;
+  currentUserId: string;
   users: User[];
   modules: ErpModule[];
   phases: RolloutPhase[];
@@ -13,6 +25,7 @@ interface TeamAndModulesModalProps {
   onSaveUser: (
     user: Omit<User, 'id' | 'created_at'> & { id?: string }
   ) => Promise<void>;
+  onDeleteUser: (userId: string) => Promise<void>;
   onSaveModule: (
     mod: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
       id?: string;
@@ -33,14 +46,19 @@ const AVATAR_COLORS = [
 
 export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   isOpen,
+  currentUserId,
   users,
   modules,
   phases,
   onClose,
   onSaveUser,
+  onDeleteUser,
   onSaveModule,
 }) => {
   const [tab, setTab] = useState<'team' | 'modules'>('team');
+  const [userSearch, setUserSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // User form state
   const [editingUserId, setEditingUserId] = useState<string | undefined>();
@@ -61,6 +79,19 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
 
   if (!isOpen) return null;
 
+  const filteredUsers = users.filter((u) => {
+    if (roleFilter && u.role !== roleFilter) return false;
+    if (userSearch.trim()) {
+      const q = userSearch.toLowerCase();
+      return (
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.department.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
   const resetUserForm = () => {
     setEditingUserId(undefined);
     setName('');
@@ -79,6 +110,20 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setDepartment(u.department);
     setSpecialty(u.specialty || '');
     setActive(u.active);
+  };
+
+  const handleToggleActive = async (u: User) => {
+    if (u.id === currentUserId) return;
+    await onSaveUser({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
+      specialty: u.specialty,
+      avatar_color: u.avatar_color,
+      active: !u.active,
+    });
   };
 
   const handleUserSubmit = async (e: React.FormEvent) => {
@@ -140,15 +185,15 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+      <div className="w-full max-w-5xl max-h-[90vh] rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-slate-50">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              Menaxhimi i Ekipit & Moduleve të ERP-së
+              Menaxhimi i Përdoruesve & Moduleve të ERP-së
             </h2>
             <p className="text-xs text-slate-500">
-              Regjistroni anëtarë të rinj, caktoni rolet dhe menaxhoni modulet
+              Shtoni, modifikoni, aktivizoni/çaktivizoni ose fshini përdoruesit dhe modulet
             </p>
           </div>
           <button
@@ -172,7 +217,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>Anëtarët e Ekipit ({users.length})</span>
+            <span>Përdoruesit ({users.length})</span>
           </button>
           <button
             type="button"
@@ -202,8 +247,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                     <UserPlus className="h-4 w-4 text-blue-600" />
                     <span>
                       {editingUserId
-                        ? 'Përditëso Anëtarin'
-                        : 'Regjistro Anëtar të Ri'}
+                        ? 'Përditëso Përdoruesin'
+                        : 'Regjistro Përdorues të Ri'}
                     </span>
                   </h3>
                   {editingUserId && (
@@ -305,64 +350,172 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                 <button
                   type="submit"
                   disabled={savingUser}
-                  className="w-full rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
                 >
                   {savingUser
                     ? 'Duke ruajtur...'
                     : editingUserId
                     ? 'Ruaj Ndryshimet'
-                    : 'Shto në Ekip'}
+                    : 'Regjistro Përdoruesin'}
                 </button>
               </form>
 
               {/* Users List */}
-              <div className="lg:col-span-7 space-y-2">
-                {users.map((u) => (
-                  <div
-                    key={u.id}
-                    className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
-                      u.active
-                        ? 'border-slate-200 bg-white'
-                        : 'border-slate-200 bg-slate-50 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                        style={{ backgroundColor: u.avatar_color }}
-                      >
-                        {getInitials(u.name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-900">
-                            {u.name}
-                          </p>
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
-                              u.role
-                            )}`}
-                          >
-                            {u.role}
-                          </span>
-                        </div>
-                        <p className="truncate text-xs text-slate-500">
-                          {u.email} • {u.department}
-                          {u.specialty ? ` (${u.specialty})` : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleEditUser(u)}
-                      className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                      title="Ndrysho"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </button>
+              <div className="lg:col-span-7 space-y-3">
+                {/* Search & Role Filter */}
+                <div className="flex flex-wrap gap-2">
+                  <div className="relative flex-1 min-w-[180px]">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Kërko përdorues..."
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none"
+                    />
                   </div>
-                ))}
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="">Të gjitha Rolet</option>
+                    <option value="Menaxher">Menaxher</option>
+                    <option value="Programer">Programer</option>
+                    <option value="Staf">Staf</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  {filteredUsers.map((u) => {
+                    const isSelf = u.id === currentUserId;
+                    const isConfirmingDelete = confirmDeleteId === u.id;
+                    return (
+                      <div
+                        key={u.id}
+                        className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                          u.active
+                            ? 'border-slate-200 bg-white'
+                            : 'border-slate-200 bg-slate-50 opacity-65'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                            style={{ backgroundColor: u.avatar_color }}
+                          >
+                            {getInitials(u.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {u.name}
+                              </p>
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
+                                  u.role
+                                )}`}
+                              >
+                                {u.role}
+                              </span>
+                              {!u.active && (
+                                <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+                                  Joaktiv
+                                </span>
+                              )}
+                              {isSelf && (
+                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800">
+                                  Ju
+                                </span>
+                              )}
+                            </div>
+                            <p className="truncate text-xs text-slate-500">
+                              {u.email} • {u.department}
+                              {u.specialty ? ` (${u.specialty})` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(u)}
+                              className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold flex items-center gap-1 transition ${
+                                u.active
+                                  ? 'border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              }`}
+                              title={
+                                u.active
+                                  ? 'Çaktivizo llogarinë'
+                                  : 'Aktivizo llogarinë'
+                              }
+                            >
+                              {u.active ? (
+                                <>
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">
+                                    Çaktivizo
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">
+                                    Aktivizo
+                                  </span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleEditUser(u)}
+                            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                            title="Ndrysho"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+
+                          {!isSelf && (
+                            isConfirmingDelete ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await onDeleteUser(u.id);
+                                    setConfirmDeleteId(null);
+                                  }}
+                                  className="rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700"
+                                >
+                                  Konfirmo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="rounded-lg border border-slate-200 px-2 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                                >
+                                  Jo
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(u.id)}
+                                className="rounded-lg border border-slate-200 p-1.5 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                                title="Fshi përdoruesin"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : (

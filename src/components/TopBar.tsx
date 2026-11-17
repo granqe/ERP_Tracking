@@ -118,7 +118,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                 >
                   <Users className="h-4 w-4" />
-                  <span className="hidden lg:inline">Ekipi & Modulet</span>
+                  <span className="hidden sm:inline">Përdoruesit & Modulet</span>
                 </button>
               )}
             </nav>

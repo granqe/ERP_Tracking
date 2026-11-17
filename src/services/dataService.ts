@@ -418,6 +418,18 @@ export async function upsertUser(
   return user;
 }
 
+export async function deleteUser(userId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('users').delete().eq('id', userId);
+    if (error) throw error;
+    return;
+  }
+
+  const users = readLocal<User[]>(STORAGE_KEYS.users, SEED_USERS);
+  const next = users.filter((u) => u.id !== userId);
+  writeLocal(STORAGE_KEYS.users, next);
+}
+
 export async function upsertErpModule(
   modInput: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
     id?: string;

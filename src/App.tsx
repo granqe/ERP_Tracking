@@ -17,6 +17,7 @@ import {
   addComment,
   assignTicket,
   createTicket,
+  deleteUser,
   loadAllData,
   overridePriority,
   resetLocalDemoData,
@@ -320,6 +321,12 @@ export function App() {
     showToast(`Përdoruesi ${saved.name} u ruajt me sukses.`);
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    await deleteUser(userId);
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    showToast('Përdoruesi u fshi nga sistemi.');
+  };
+
   const handleSaveModule = async (
     modInput: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
       id?: string;
@@ -456,11 +463,13 @@ export function App() {
       {currentUser.role === 'Menaxher' && (
         <TeamAndModulesModal
           isOpen={isTeamModalOpen}
+          currentUserId={currentUser.id}
           users={users}
           modules={modules}
           phases={phases}
           onClose={() => setIsTeamModalOpen(false)}
           onSaveUser={handleSaveUser}
+          onDeleteUser={handleDeleteUser}
           onSaveModule={handleSaveModule}
         />
       )}
