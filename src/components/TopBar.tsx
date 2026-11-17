@@ -49,36 +49,43 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const activeUsers = allUsers.filter((u) => u.active);
 
+  // Stil i unifikuar për të gjithë butonat e shiritit
+  const btnCore =
+    'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-medium leading-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40';
+  const baseBtn = `${btnCore} h-9`;
+  const tabBtn = (active: boolean) =>
+    `${btnCore} h-7 ${
+      active
+        ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
+        : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+    }`;
+  const iconCls = 'h-4 w-4 shrink-0';
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-3">
           {/* Brand + Nav */}
-          <div className="flex items-center gap-6 min-w-0">
-            <div className="flex items-center gap-2.5 shrink-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-xs">
+          <div className="flex min-w-0 items-center gap-5">
+            <div className="flex shrink-0 items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
                 <ShieldCheck className="h-5 w-5 text-blue-400" />
               </div>
-              <div className="hidden sm:block">
-                <span className="block text-sm font-bold text-slate-900 leading-none">
-                  ERP Migrim & Gjurmues
-                </span>
-              </div>
+              <span className="hidden whitespace-nowrap text-sm font-bold leading-none text-slate-900 lg:inline">
+                ERP Migrim & Gjurmues
+              </span>
             </div>
 
             {/* Navigation Tabs */}
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
               {currentUser.role === 'Menaxher' && (
                 <button
                   type="button"
                   onClick={() => onTabChange('pm_overview')}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    activeTab === 'pm_overview'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
+                  className={`${tabBtn(activeTab === 'pm_overview')}`}
+                  title="Pamja e Menaxherit"
                 >
-                  <LayoutDashboard className="h-4 w-4" />
+                  <LayoutDashboard className={iconCls} />
                   <span className="hidden md:inline">Pamja e Menaxherit</span>
                 </button>
               )}
@@ -86,14 +93,10 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 type="button"
                 onClick={() => onTabChange('work_board')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                  activeTab === 'work_board'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className={`${tabBtn(activeTab === 'work_board')}`}
               >
-                <Kanban className="h-4 w-4" />
-                <span>
+                <Kanban className={iconCls} />
+                <span className="hidden sm:inline">
                   {currentUser.role === 'Staf'
                     ? 'Kërkesat e Mia'
                     : currentUser.role === 'Programer'
@@ -106,24 +109,25 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenTeamModal}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  className={`${tabBtn(false)}`}
+                  title="Përdoruesit & Modulet"
                 >
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Përdoruesit & Modulet</span>
+                  <Users className={iconCls} />
+                  <span className="hidden md:inline">Përdoruesit & Modulet</span>
                 </button>
               )}
             </nav>
           </div>
 
           {/* Right Actions: New Ticket + User Switcher + Logout */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onOpenNewTicket}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:bg-blue-700 active:scale-[0.99]"
+              className={`${baseBtn} bg-blue-600 font-semibold text-white shadow-xs hover:bg-blue-700`}
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Raporto Problem / Kërkesë</span>
+              <Plus className={iconCls} />
+              <span className="hidden sm:inline">Raporto Problem</span>
               <span className="sm:hidden">Raporto</span>
             </button>
 
@@ -131,32 +135,25 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 type="button"
                 onClick={() => setSwitcherOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left transition hover:border-slate-300 hover:bg-white"
+                className={`${baseBtn} gap-2 border border-slate-200 bg-white pl-1 pr-2 text-left hover:border-slate-300 hover:bg-slate-50`}
               >
-                <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
                   style={{ backgroundColor: currentUser.avatar_color }}
                 >
                   {getInitials(currentUser.name)}
-                </div>
-                <div className="hidden md:block leading-tight">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-slate-900">
-                      {currentUser.name}
-                    </span>
-                    <span
-                      className={`rounded px-1.5 py-0.2 text-[10px] font-semibold ${getRoleBadgeClass(
-                        currentUser.role
-                      )}`}
-                    >
-                      {currentUser.role}
-                    </span>
-                  </div>
-                  <span className="block text-[11px] text-slate-500">
-                    {currentUser.department}
-                  </span>
-                </div>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                </span>
+                <span className="hidden text-sm font-semibold text-slate-900 md:inline">
+                  {currentUser.name}
+                </span>
+                <span
+                  className={`hidden rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none md:inline ${getRoleBadgeClass(
+                    currentUser.role
+                  )}`}
+                >
+                  {currentUser.role}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               </button>
 
               {switcherOpen && (
