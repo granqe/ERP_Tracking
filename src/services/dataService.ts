@@ -1,11 +1,4 @@
-import {
-  SEED_EVENTS,
-  SEED_MODULES,
-  SEED_PHASES,
-  SEED_TICKETS,
-  SEED_USERS,
-} from '../data/seedData';
-import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type {
   ErpModule,
   EventType,
@@ -19,14 +12,6 @@ import type {
   User,
 } from '../types';
 
-const STORAGE_KEYS = {
-  users: 'erp_tracker_users_v1',
-  modules: 'erp_tracker_modules_v1',
-  phases: 'erp_tracker_phases_v1',
-  tickets: 'erp_tracker_tickets_v1',
-  events: 'erp_tracker_events_v1',
-};
-
 export interface AppDataset {
   users: User[];
   modules: ErpModule[];
@@ -35,25 +20,13 @@ export interface AppDataset {
   events: TicketEvent[];
 }
 
-function readLocal<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) {
-      localStorage.setItem(key, JSON.stringify(fallback));
-      return fallback;
-    }
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+function requireSupabase() {
+  if (!supabase) {
+    throw new Error(
+      'Baza e të dhënave Supabase nuk është e konfiguruar. Vendosni VITE_SUPABASE_URL dhe VITE_SUPABASE_ANON_KEY.'
+    );
   }
-}
-
-function writeLocal<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore quota errors
-  }
+  return supabase;
 }
 
 function generateId(): string {
@@ -68,41 +41,33 @@ function generateId(): string {
 }
 
 export async function loadAllData(): Promise<AppDataset> {
-  if (isSupabaseConfigured && supabase) {
-    const [usersRes, modRes, phaseRes, ticketRes, eventRes] = await Promise.all([
-      supabase.from('users').select('*').order('created_at', { ascending: true }),
-      supabase.from('erp_modules').select('*').order('rollout_phase', { ascending: true }),
-      supabase.from('rollout_phases').select('*').order('id', { ascending: true }),
-      supabase.from('tickets').select('*').order('created_at', { ascending: false }),
-      supabase.from('ticket_events').select('*').order('created_at', { ascending: false }),
-    ]);
+  const client = requireSupabase();
 
-    if (usersRes.error) throw usersRes.error;
-    if (modRes.error) throw modRes.error;
-    if (phaseRes.error) throw phaseRes.error;
-    if (ticketRes.error) throw ticketRes.error;
-    if (eventRes.error) throw eventRes.error;
+  const [usersRes, modRes, phaseRes, ticketRes, eventRes] = await Promise.all([
+    client.from('users').select('*').order('created_at', { ascending: true }),
+    client.from('erp_modules').select('*').order('rollout_phase', { ascending: true }),
+    client.from('rollout_phases').select('*').order('id', { ascending: true }),
+    client.from('tickets').select('*').order('created_at', { ascending: false }),
+    client.from('ticket_events').select('*').order('created_at', { ascending: false }),
+  ]);
 
-    return {
-      users: (usersRes.data as User[]) ?? [],
-      modules: (modRes.data as ErpModule[]) ?? [],
-      phases: (phaseRes.data as RolloutPhase[]) ?? [],
-      tickets: (ticketRes.data as Ticket[]) ?? [],
-      events: (eventRes.data as TicketEvent[]) ?? [],
-    };
-  }
+  if (usersRes.error) throw usersRes.error;
+  if (modRes.error) throw modRes.error;
+  if (phaseRes.error) throw phaseRes.error;
+  if (ticketRes.error) throw ticketRes.error;
+  if (eventRes.error) throw eventRes.error;
 
   return {
-    users: readLocal(STORAGE_KEYS.users, SEED_USERS),
-    modules: readLocal(STORAGE_KEYS.modules, SEED_MODULES),
-    phases: readLocal(STORAGE_KEYS.phases, SEED_PHASES),
-    tickets: readLocal(STORAGE_KEYS.tickets, SEED_TICKETS),
-    events: readLocal(STORAGE_KEYS.events, SEED_EVENTS),
+    users: (usersRes.data as User[]) ?? [],
+    modules: (modRes.data as ErpModule[]) ?? [],
+    phases: (phaseRes.data as RolloutPhase[]) ?? [],
+    tickets: (ticketRes.data as Ticket[]) ?? [],
+    events: (eventRes.data as TicketEvent[]) ?? [],
   };
 }
 
 export function subscribeRealtime(onChange: () => void): () => void {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!supabase) {
     return () => {};
   }
 
@@ -120,21 +85,6 @@ export function subscribeRealtime(onChange: () => void): () => void {
   };
 }
 
-export function resetLocalDemoData(): AppDataset {
-  writeLocal(STORAGE_KEYS.users, SEED_USERS);
-  writeLocal(STORAGE_KEYS.modules, SEED_MODULES);
-  writeLocal(STORAGE_KEYS.phases, SEED_PHASES);
-  writeLocal(STORAGE_KEYS.tickets, SEED_TICKETS);
-  writeLocal(STORAGE_KEYS.events, SEED_EVENTS);
-  return {
-    users: SEED_USERS,
-    modules: SEED_MODULES,
-    phases: SEED_PHASES,
-    tickets: SEED_TICKETS,
-    events: SEED_EVENTS,
-  };
-}
-
 function nextTicketCode(tickets: Ticket[]): string {
   const maxNum = tickets.reduce((max, t) => {
     const match = t.code.match(/ERP-(\d+)/);
@@ -147,26 +97,20 @@ function nextTicketCode(tickets: Ticket[]): string {
 async function appendEvent(
   event: Omit<TicketEvent, 'id' | 'created_at'>
 ): Promise<TicketEvent> {
+  const client = requireSupabase();
   const newEvent: TicketEvent = {
     ...event,
     id: generateId(),
     created_at: new Date().toISOString(),
   };
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('ticket_events')
-      .insert(newEvent)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as TicketEvent;
-  }
-
-  const events = readLocal<TicketEvent[]>(STORAGE_KEYS.events, SEED_EVENTS);
-  const updated = [newEvent, ...events];
-  writeLocal(STORAGE_KEYS.events, updated);
-  return newEvent;
+  const { data, error } = await client
+    .from('ticket_events')
+    .insert(newEvent)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as TicketEvent;
 }
 
 export interface CreateTicketInput {
@@ -182,6 +126,7 @@ export async function createTicket(
   actor: User,
   existingTickets: Ticket[]
 ): Promise<{ ticket: Ticket; event: TicketEvent }> {
+  const client = requireSupabase();
   const nowIso = new Date().toISOString();
   const newTicket: Ticket = {
     id: generateId(),
@@ -203,31 +148,20 @@ export async function createTicket(
     updated_at: nowIso,
   };
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('tickets')
-      .insert(newTicket)
-      .select()
-      .single();
-    if (error) throw error;
-    const ev = await appendEvent({
-      ticket_id: (data as Ticket).id,
-      actor_id: actor.id,
-      event_type: 'created',
-      message: `Tiketa u hap nga ${actor.name} (${actor.department}).`,
-    });
-    return { ticket: data as Ticket, event: ev };
-  }
+  const { data, error } = await client
+    .from('tickets')
+    .insert(newTicket)
+    .select()
+    .single();
+  if (error) throw error;
 
-  const tickets = readLocal<Ticket[]>(STORAGE_KEYS.tickets, SEED_TICKETS);
-  writeLocal(STORAGE_KEYS.tickets, [newTicket, ...tickets]);
   const ev = await appendEvent({
-    ticket_id: newTicket.id,
+    ticket_id: (data as Ticket).id,
     actor_id: actor.id,
     event_type: 'created',
     message: `Tiketa u hap nga ${actor.name} (${actor.department}).`,
   });
-  return { ticket: newTicket, event: ev };
+  return { ticket: data as Ticket, event: ev };
 }
 
 export async function updateTicketFields(
@@ -237,44 +171,25 @@ export async function updateTicketFields(
   eventType: EventType,
   eventMessage: string
 ): Promise<{ ticket: Ticket; event: TicketEvent }> {
+  const client = requireSupabase();
   const nowIso = new Date().toISOString();
   const fullPatch = { ...patch, updated_at: nowIso };
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('tickets')
-      .update(fullPatch)
-      .eq('id', ticketId)
-      .select()
-      .single();
-    if (error) throw error;
-    const ev = await appendEvent({
-      ticket_id: ticketId,
-      actor_id: actor.id,
-      event_type: eventType,
-      message: eventMessage,
-    });
-    return { ticket: data as Ticket, event: ev };
-  }
+  const { data, error } = await client
+    .from('tickets')
+    .update(fullPatch)
+    .eq('id', ticketId)
+    .select()
+    .single();
+  if (error) throw error;
 
-  const tickets = readLocal<Ticket[]>(STORAGE_KEYS.tickets, SEED_TICKETS);
-  let updatedTicket: Ticket | null = null;
-  const nextTickets = tickets.map((t) => {
-    if (t.id === ticketId) {
-      updatedTicket = { ...t, ...fullPatch };
-      return updatedTicket;
-    }
-    return t;
-  });
-  if (!updatedTicket) throw new Error('Tiketa nuk u gjet.');
-  writeLocal(STORAGE_KEYS.tickets, nextTickets);
   const ev = await appendEvent({
     ticket_id: ticketId,
     actor_id: actor.id,
     event_type: eventType,
     message: eventMessage,
   });
-  return { ticket: updatedTicket, event: ev };
+  return { ticket: data as Ticket, event: ev };
 }
 
 export async function transitionTicketStatus(
@@ -386,6 +301,7 @@ export async function addComment(
 export async function upsertUser(
   userInput: Omit<User, 'id' | 'created_at'> & { id?: string }
 ): Promise<User> {
+  const client = requireSupabase();
   const nowIso = new Date().toISOString();
   const user: User = {
     id: userInput.id ?? generateId(),
@@ -399,35 +315,19 @@ export async function upsertUser(
     created_at: nowIso,
   };
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('users')
-      .upsert(user)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as User;
-  }
-
-  const users = readLocal<User[]>(STORAGE_KEYS.users, SEED_USERS);
-  const exists = users.some((u) => u.id === user.id);
-  const next = exists
-    ? users.map((u) => (u.id === user.id ? { ...u, ...user } : u))
-    : [...users, user];
-  writeLocal(STORAGE_KEYS.users, next);
-  return user;
+  const { data, error } = await client
+    .from('users')
+    .upsert(user)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as User;
 }
 
 export async function deleteUser(userId: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('users').delete().eq('id', userId);
-    if (error) throw error;
-    return;
-  }
-
-  const users = readLocal<User[]>(STORAGE_KEYS.users, SEED_USERS);
-  const next = users.filter((u) => u.id !== userId);
-  writeLocal(STORAGE_KEYS.users, next);
+  const client = requireSupabase();
+  const { error } = await client.from('users').delete().eq('id', userId);
+  if (error) throw error;
 }
 
 export async function upsertErpModule(
@@ -436,6 +336,7 @@ export async function upsertErpModule(
     is_default?: boolean;
   }
 ): Promise<ErpModule> {
+  const client = requireSupabase();
   const nowIso = new Date().toISOString();
   const mod: ErpModule = {
     id: modInput.id ?? generateId(),
@@ -446,23 +347,13 @@ export async function upsertErpModule(
     created_at: nowIso,
   };
 
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('erp_modules')
-      .upsert(mod)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as ErpModule;
-  }
-
-  const mods = readLocal<ErpModule[]>(STORAGE_KEYS.modules, SEED_MODULES);
-  const exists = mods.some((m) => m.id === mod.id);
-  const next = exists
-    ? mods.map((m) => (m.id === mod.id ? { ...m, ...mod } : m))
-    : [...mods, mod];
-  writeLocal(STORAGE_KEYS.modules, next);
-  return mod;
+  const { data, error } = await client
+    .from('erp_modules')
+    .upsert(mod)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ErpModule;
 }
 
 export async function updateRolloutPhase(
@@ -470,27 +361,13 @@ export async function updateRolloutPhase(
   status: PhaseStatus,
   progress: number
 ): Promise<RolloutPhase> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('rollout_phases')
-      .update({ status, progress })
-      .eq('id', phaseId)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as RolloutPhase;
-  }
-
-  const phases = readLocal<RolloutPhase[]>(STORAGE_KEYS.phases, SEED_PHASES);
-  let updated: RolloutPhase | null = null;
-  const next = phases.map((p) => {
-    if (p.id === phaseId) {
-      updated = { ...p, status, progress };
-      return updated;
-    }
-    return p;
-  });
-  if (!updated) throw new Error('Faza nuk u gjet.');
-  writeLocal(STORAGE_KEYS.phases, next);
-  return updated;
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('rollout_phases')
+    .update({ status, progress })
+    .eq('id', phaseId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as RolloutPhase;
 }

@@ -1,26 +1,44 @@
 import React, { useState } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
+  CheckCircle2,
   Code2,
   Database,
   Lock,
   Mail,
+  RefreshCw,
   ShieldCheck,
   UserCheck,
+  UserPlus,
   Users,
 } from 'lucide-react';
-import { isSupabaseConfigured } from '../lib/supabase';
+import type { DbHealthStatus } from '../lib/supabase';
 import type { User } from '../types';
 import { getInitials, getRoleBadgeClass } from '../utils/formatters';
 
 interface LoginScreenProps {
   users: User[];
+  dbHealth: DbHealthStatus;
+  onRetryConnection: () => void;
   onLogin: (user: User) => void;
+  onBootstrapAdmin: (name: string, email: string) => Promise<void>;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  users,
+  dbHealth,
+  onRetryConnection,
+  onLogin,
+  onBootstrapAdmin,
+}) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+
+  // First-time production admin setup
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   const activeUsers = users.filter((u) => u.active);
   const managers = activeUsers.filter((u) => u.role === 'Menaxher');
@@ -34,7 +52,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
     );
     if (!found) {
       setError(
-        'Ky email nuk u gjet në listën e anëtarëve aktivë. Zgjidhni një llogari nga e djathta ose kontaktoni Menaxherin.'
+        'Ky email nuk u gjet në listën e përdoruesve aktivë. Kontaktoni Menaxherin e Projektit.'
       );
       return;
     }
@@ -42,54 +60,66 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
     onLogin(found);
   };
 
+  const handleCreateFirstAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminName.trim() || !adminEmail.trim()) return;
+    setCreatingAdmin(true);
+    try {
+      await onBootstrapAdmin(adminName, adminEmail);
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
   const renderGroup = (
     title: string,
     subtitle: string,
     icon: React.ReactNode,
     groupUsers: User[]
-  ) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-          {icon}
-          <span>{title}</span>
+  ) => {
+    if (groupUsers.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {icon}
+            <span>{title}</span>
+          </div>
+          <span className="text-[11px] text-slate-400">{subtitle}</span>
         </div>
-        <span className="text-[11px] text-slate-400">{subtitle}</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {groupUsers.map((u) => (
-          <button
-            key={u.id}
-            type="button"
-            onClick={() => onLogin(u)}
-            className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:shadow-sm active:scale-[0.99]"
-          >
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-xs"
-              style={{ backgroundColor: u.avatar_color }}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {groupUsers.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => onLogin(u)}
+              className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:border-blue-400 hover:shadow-sm active:scale-[0.99]"
             >
-              {getInitials(u.name)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-xs"
+                style={{ backgroundColor: u.avatar_color }}
+              >
+                {getInitials(u.name)}
+              </div>
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-blue-700">
                   {u.name}
                 </p>
+                <p className="truncate text-xs text-slate-500">{u.department}</p>
               </div>
-              <p className="truncate text-xs text-slate-500">{u.department}</p>
-            </div>
-            <span
-              className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
-                u.role
-              )}`}
-            >
-              {u.role}
-            </span>
-          </button>
-        ))}
+              <span
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
+                  u.role
+                )}`}
+              >
+                {u.role}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
@@ -120,50 +150,56 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
                 konfirmoni testimet (UAT) me izolim të plotë sipas rolit.
               </p>
 
-              <form onSubmit={handleManualSubmit} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="login-email"
-                    className="block text-xs font-medium text-slate-300 mb-1.5"
-                  >
-                    Hyni me adresën tuaj të email-it
-                  </label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      id="login-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="emri.mbiemri@kompania.al"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                    />
+              {dbHealth.connected && activeUsers.length > 0 && (
+                <form onSubmit={handleManualSubmit} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="login-email"
+                      className="block text-xs font-medium text-slate-300 mb-1.5"
+                    >
+                      Hyni me adresën tuaj të email-it
+                    </label>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        id="login-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="emri.mbiemri@kompania.al"
+                        className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {error && (
-                  <p className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2 text-xs text-rose-200">
-                    {error}
-                  </p>
-                )}
+                  {error && (
+                    <p className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2 text-xs text-rose-200">
+                      {error}
+                    </p>
+                  )}
 
-                <button
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.99]"
-                >
-                  <span>Hyr në Sistem</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 active:scale-[0.99]"
+                  >
+                    <span>Hyr në Sistem</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </form>
+              )}
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-blue-400" />
+                <Database
+                  className={`h-4 w-4 ${
+                    dbHealth.connected ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                />
                 <span>
-                  {isSupabaseConfigured
-                    ? 'Lidhur me Supabase (Realtime)'
-                    : 'Modaliteti Demo (Të dhëna lokale)'}
+                  {dbHealth.connected
+                    ? 'Produksion • Lidhur me Supabase'
+                    : 'Databaza nuk është e lidhur'}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-slate-400">
@@ -173,47 +209,154 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
             </div>
           </div>
 
-          {/* Right Panel: Quick Role Login Cards */}
-          <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-slate-900">
-                  Hyrje e Shpejtë sipas Rolit (Demo & Testim)
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Klikoni mbi një përdorues për të testuar menjëherë pamjen dhe
-                  kufizimet e aksesit (RBAC) për atë rol.
-                </p>
-              </div>
+          {/* Right Panel: Connection Status / First Admin Setup / Active Users */}
+          <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white/95 p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+            {!dbHealth.connected ? (
+              <div className="space-y-5 my-auto">
+                <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+                  <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-base font-bold text-rose-950">
+                      Lidhja me Databazën (Supabase) nuk është gati
+                    </h3>
+                    <p className="mt-1 text-xs text-rose-800 leading-relaxed">
+                      {dbHealth.error}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="space-y-5">
-                {renderGroup(
-                  'Menaxher i Projektit',
-                  'Akses i plotë (God-Mode)',
-                  <UserCheck className="h-3.5 w-3.5 text-slate-700" />,
-                  managers
-                )}
-                {renderGroup(
-                  'Programerë / Zhvillues',
-                  'Detyrat teknike & bllokimet',
-                  <Code2 className="h-3.5 w-3.5 text-blue-700" />,
-                  developers
-                )}
-                {renderGroup(
-                  'Punonjës / Staf',
-                  'Vetëm tiketat personale',
-                  <Users className="h-3.5 w-3.5 text-teal-700" />,
-                  staff
-                )}
-              </div>
-            </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3 text-xs text-slate-700">
+                  <p className="font-bold text-slate-900 text-sm">
+                    Si ta përfundoni lidhjen në Vercel (Modaliteti Produksion):
+                  </p>
+                  <ol className="list-decimal list-inside space-y-2 leading-relaxed">
+                    <li>
+                      Krijoni databazën Supabase (nga{' '}
+                      <strong>Vercel → Storage → Supabase</strong> ose{' '}
+                      <strong>supabase.com</strong>).
+                    </li>
+                    <li>
+                      Hapni <strong>Supabase SQL Editor</strong> dhe ekzekutoni
+                      skedarin <code>schema.sql</code>.
+                    </li>
+                    <li>
+                      Te{' '}
+                      <strong>
+                        Vercel → Settings → Environment Variables
+                      </strong>
+                      , sigurohuni që ekzistojnë variablat{' '}
+                      <code>VITE_SUPABASE_URL</code> dhe{' '}
+                      <code>VITE_SUPABASE_ANON_KEY</code> (dhe bëni{' '}
+                      <strong>Redeploy</strong>).
+                    </li>
+                  </ol>
+                </div>
 
-            <div className="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600">
-              <strong className="text-slate-800">Shënim për testimin:</strong>{' '}
-              Pasi të hyni, mund të ndërroni përdoruesin në çdo moment nga
-              menuja e shpejtë në krye të faqes (Header) për të verifikuar që
-              Stafi sheh vetëm raportimet e veta.
-            </div>
+                <button
+                  type="button"
+                  onClick={onRetryConnection}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Kontrollo Lidhjen Përsëri</span>
+                </button>
+              </div>
+            ) : activeUsers.length === 0 ? (
+              <div className="space-y-5 my-auto">
+                <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-950">
+                      Databaza është e lidhur! (0 të dhëna demo)
+                    </h3>
+                    <p className="mt-0.5 text-xs text-emerald-800">
+                      Regjistroni llogarinë e parë të{' '}
+                      <strong>Menaxherit të Projektit</strong> për të filluar.
+                    </p>
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={handleCreateFirstAdmin}
+                  className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                    <UserPlus className="h-4 w-4 text-blue-600" />
+                    <span>Krijo Menaxherin e Parë</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Emri dhe Mbiemri *
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={adminName}
+                      onChange={(e) => setAdminName(e.target.value)}
+                      placeholder="p.sh. Arben Krasniqi"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Email i Punës *
+                    </label>
+                    <input
+                      required
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      placeholder="emri@kompania.al"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={creatingAdmin}
+                    className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {creatingAdmin
+                      ? 'Duke krijuar llogarinë...'
+                      : 'Krijo Llogarinë & Hyr në Sistem'}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Zgjidhni Llogarinë Tuaj
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Përdoruesit e regjistruar në sistemin e prodhimit.
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  {renderGroup(
+                    'Menaxher i Projektit',
+                    'Akses i plotë',
+                    <UserCheck className="h-3.5 w-3.5 text-slate-700" />,
+                    managers
+                  )}
+                  {renderGroup(
+                    'Programerë / Zhvillues',
+                    'Detyrat teknike & bllokimet',
+                    <Code2 className="h-3.5 w-3.5 text-blue-700" />,
+                    developers
+                  )}
+                  {renderGroup(
+                    'Punonjës / Staf',
+                    'Vetëm tiketat personale',
+                    <Users className="h-3.5 w-3.5 text-teal-700" />,
+                    staff
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

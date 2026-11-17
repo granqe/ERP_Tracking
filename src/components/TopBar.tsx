@@ -6,11 +6,9 @@ import {
   LayoutDashboard,
   LogOut,
   Plus,
-  RotateCcw,
   ShieldCheck,
   Users,
 } from 'lucide-react';
-import { isSupabaseConfigured } from '../lib/supabase';
 import type { User } from '../types';
 import { getInitials, getRoleBadgeClass } from '../utils/formatters';
 
@@ -24,7 +22,6 @@ interface TopBarProps {
   onSwitchUser: (user: User) => void;
   onOpenNewTicket: () => void;
   onOpenTeamModal: () => void;
-  onResetDemo: () => void;
   onLogout: () => void;
 }
 
@@ -36,7 +33,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSwitchUser,
   onOpenNewTicket,
   onOpenTeamModal,
-  onResetDemo,
   onLogout,
 }) => {
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -68,9 +64,9 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <span className="block text-sm font-bold text-slate-900 leading-none">
                   ERP Migrim & Gjurmues
                 </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <Database className="h-3 w-3 text-blue-600" />
-                  {isSupabaseConfigured ? 'Supabase Live' : 'Modaliteti Demo'}
+                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                  <Database className="h-3 w-3 text-emerald-600" />
+                  Produksion • Supabase Live
                 </span>
               </div>
             </div>
@@ -124,7 +120,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             </nav>
           </div>
 
-          {/* Right Actions: New Ticket + Quick Role Switcher + Logout */}
+          {/* Right Actions: New Ticket + User Switcher + Logout */}
           <div className="flex items-center gap-2.5">
             <button
               type="button"
@@ -136,13 +132,11 @@ export const TopBar: React.FC<TopBarProps> = ({
               <span className="sm:hidden">Raporto</span>
             </button>
 
-            {/* Quick Role / User Switcher */}
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setSwitcherOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left transition hover:border-slate-300 hover:bg-white"
-                title="Ndërro Rolet / Përdoruesin (Testim i Shpejtë)"
               >
                 <div
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white"
@@ -174,7 +168,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
                   <div className="px-2.5 py-1.5 border-b border-slate-100 mb-1">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                      Ndërro Përdoruesin (Testim RBAC)
+                      Ndërro Llogarinë
                     </p>
                   </div>
                   <div className="max-h-72 overflow-y-auto custom-scrollbar space-y-0.5">
@@ -220,28 +214,14 @@ export const TopBar: React.FC<TopBarProps> = ({
                     })}
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-1 px-1">
-                    {!isSupabaseConfigured && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onResetDemo();
-                          setSwitcherOpen(false);
-                        }}
-                        className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
-                        title="Rikthe të dhënat fillestare demo"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        <span>Rikthe Demo</span>
-                      </button>
-                    )}
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-end px-1">
                     <button
                       type="button"
                       onClick={() => {
                         setSwitcherOpen(false);
                         onLogout();
                       }}
-                      className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                       <span>Dil</span>

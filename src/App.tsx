@@ -13,6 +13,8 @@ import { TicketDetailDrawer } from './components/TicketDetailDrawer';
 import { TopBar } from './components/TopBar';
 import type { ActiveTab } from './components/TopBar';
 import { WorkBoard } from './components/WorkBoard';
+import { checkDatabaseConnection } from './lib/supabase';
+import type { DbHealthStatus } from './lib/supabase';
 import {
   addComment,
   assignTicket,
@@ -20,7 +22,6 @@ import {
   deleteUser,
   loadAllData,
   overridePriority,
-  resetLocalDemoData,
   setTicketDeadline,
   subscribeRealtime,
   transitionTicketStatus,
@@ -56,6 +57,10 @@ const EMPTY_FILTERS: TicketFilters = {
 
 export function App() {
   const [loading, setLoading] = useState(true);
+  const [dbHealth, setDbHealth] = useState<DbHealthStatus>({
+    configured: false,
+    connected: false,
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [modules, setModules] = useState<ErpModule[]>([]);
   const [phases, setPhases] = useState<RolloutPhase[]>([]);
@@ -89,6 +94,11 @@ export function App() {
 
   const refreshData = useCallback(async () => {
     try {
+      const health = await checkDatabaseConnection();
+      setDbHealth(health);
+      if (!health.connected) {
+        return;
+      }
       const data = await loadAllData();
       setUsers(data.users);
       setModules(data.modules);
@@ -97,6 +107,14 @@ export function App() {
       setEvents(data.events);
     } catch (err) {
       console.error('Gabim gjatë ngarkimit të të dhënave:', err);
+      setDbHealth({
+        configured: true,
+        connected: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : 'Gabim gjatë leximit nga databaza.',
+      });
     } finally {
       setLoading(false);
     }
@@ -138,15 +156,18 @@ export function App() {
     setSelectedTicketId(null);
   };
 
-  const handleResetDemo = () => {
-    const data = resetLocalDemoData();
-    setUsers(data.users);
-    setModules(data.modules);
-    setPhases(data.phases);
-    setTickets(data.tickets);
-    setEvents(data.events);
-    setSelectedTicketId(null);
-    showToast('Të dhënat demo u rikthyen në gjendjen fillestare.');
+  const handleBootstrapAdmin = async (name: string, email: string) => {
+    const created = await upsertUser({
+      name,
+      email,
+      role: 'Menaxher',
+      department: 'Menaxhim Projekti',
+      specialty: 'Drejtues i Migrimit ERP',
+      avatar_color: '#0f172a',
+      active: true,
+    });
+    setUsers([created]);
+    handleLoginOrSwitch(created);
   };
 
   // RBAC Visible Tickets
@@ -366,8 +387,19 @@ export function App() {
     );
   }
 
-  if (!currentUser) {
-    return <LoginScreen users={users} onLogin={handleLoginOrSwitch} />;
+  if (!currentUser || !dbHealth.connected) {
+    return (
+      <LoginScreen
+        users={users}
+        dbHealth={dbHealth}
+        onRetryConnection={() => {
+          setLoading(true);
+          refreshData();
+        }}
+        onLogin={handleLoginOrSwitch}
+        onBootstrapAdmin={handleBootstrapAdmin}
+      />
+    );
   }
 
   return (
@@ -380,7 +412,6 @@ export function App() {
         onSwitchUser={handleLoginOrSwitch}
         onOpenNewTicket={() => setIsNewTicketOpen(true)}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
-        onResetDemo={handleResetDemo}
         onLogout={handleLogout}
       />
 

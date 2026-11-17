@@ -139,18 +139,9 @@ CREATE POLICY "Akses i hapur demo - tickets" ON public.tickets FOR ALL USING (tr
 CREATE POLICY "Akses i hapur demo - ticket_events" ON public.ticket_events FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================================
--- TË DHËNAT FILLESTARE (SEED DATA)
+-- KONFIGURIMI FILLESTAR I MODULEVE & FAZAVE (PA TË DHËNA DEMO)
+-- Përdoruesi i parë Menaxher regjistrohet direkt nga ekrani i hyrjes në aplikacion.
 -- ============================================================================
-
-INSERT INTO public.users (id, name, email, role, department, specialty, avatar_color) VALUES
-  ('11111111-1111-4111-8111-111111111101', 'Arben Krasniqi', 'arben.krasniqi@kompania.al', 'Menaxher', 'Menaxhim Projekti', 'Drejtues i Migrimit ERP', '#0f172a'),
-  ('11111111-1111-4111-8111-111111111102', 'Elira Hoxha', 'elira.hoxha@kompania.al', 'Staf', 'Financë', 'Kontabilitet & TVSH', '#0369a1'),
-  ('11111111-1111-4111-8111-111111111103', 'Dritan Leka', 'dritan.leka@kompania.al', 'Staf', 'Financë', 'Faturim & Arkëtime', '#0d9488'),
-  ('11111111-1111-4111-8111-111111111104', 'Besart Dervishi', 'besart.dervishi@kompania.al', 'Staf', 'Support / Mirëmbajtje', 'Kontratat e Klientëve', '#b45309'),
-  ('11111111-1111-4111-8111-111111111105', 'Klaudia Prifti', 'klaudia.prifti@kompania.al', 'Staf', 'Support / Mirëmbajtje', 'Asistencë Teknike', '#be123c'),
-  ('11111111-1111-4111-8111-111111111106', 'Andi Gashi', 'andi.gashi@kompania.al', 'Programer', 'Teknologji (IT)', 'Backend & Integrime API', '#1d4ed8'),
-  ('11111111-1111-4111-8111-111111111107', 'Jonida Basha', 'jonida.basha@kompania.al', 'Programer', 'Teknologji (IT)', 'Frontend & Raporte PDF', '#4338ca')
-ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO public.erp_modules (name, description, rollout_phase, is_default) VALUES
   ('Financa & TVSH', 'Llogaritja e TVSH-së, bilancet dhe mbyllja mujore', 3, true),
