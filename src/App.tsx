@@ -26,7 +26,6 @@ import {
   setTicketDeadline,
   subscribeRealtime,
   transitionTicketStatus,
-  updateRolloutPhase,
   upsertDepartment,
   upsertErpModule,
   upsertUser,
@@ -34,7 +33,6 @@ import {
 import type {
   Department,
   ErpModule,
-  PhaseStatus,
   RolloutPhase,
   Ticket,
   TicketEvent,
@@ -557,22 +555,6 @@ export function App() {
     showToast('Departamenti u fshi nga sistemi.');
   };
 
-  const handleUpdatePhase = async (
-    phaseId: number,
-    status: PhaseStatus,
-    progress: number
-  ) => {
-    const updated = await updateRolloutPhase(phaseId, status, progress);
-    setPhases((prev) =>
-      prev.map((p) => (p.id === updated.id ? updated : p))
-    );
-    showToast(
-      status === 'Përfunduar'
-        ? `Faza ${phaseId} u mbyll zyrtarisht.`
-        : `Faza ${phaseId} u rihap.`
-    );
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-600 gap-3">
@@ -620,13 +602,11 @@ export function App() {
             tickets={tickets}
             users={users}
             modules={modules}
-            phases={phases}
             onOpenTicket={(t) => setSelectedTicketId(t.id)}
             onFilterByModule={(moduleName) => {
               setFilters({ ...EMPTY_FILTERS, module: moduleName });
               setActiveTab('work_board');
             }}
-            onUpdatePhase={handleUpdatePhase}
           />
         ) : (
           <WorkBoard
