@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  Bell,
+  CheckCheck,
   ChevronDown,
   Kanban,
   LayoutDashboard,
@@ -8,40 +10,62 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
-import type { User } from '../types';
-import { getInitials, getRoleBadgeClass } from '../utils/formatters';
+import type { Ticket, User } from '../types';
+import {
+  formatRelativeAlbanian,
+  getInitials,
+  getRoleBadgeClass,
+} from '../utils/formatters';
+import type { AppNotification } from '../utils/notifications';
 
 export type ActiveTab = 'pm_overview' | 'work_board';
 
 interface TopBarProps {
   currentUser: User;
   activeTab: ActiveTab;
+  notifications: AppNotification[];
+  readNotificationIds: Set<string>;
   onTabChange: (tab: ActiveTab) => void;
   onOpenNewTicket: () => void;
   onOpenTeamModal: () => void;
+  onOpenNotificationTicket: (ticket: Ticket, notificationId: string) => void;
+  onMarkAllNotificationsRead: () => void;
   onLogout: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   currentUser,
   activeTab,
+  notifications,
+  readNotificationIds,
   onTabChange,
   onOpenNewTicket,
   onOpenTeamModal,
+  onOpenNotificationTicket,
+  onMarkAllNotificationsRead,
   onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const unreadCount = notifications.filter(
+    (n) => !readNotificationIds.has(n.id)
+  ).length;
 
   // Stil i unifikuar për të gjithë butonat e shiritit
   const btnCore =
@@ -113,7 +137,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             </nav>
           </div>
 
-          {/* Right Actions: New Ticket + User Profile + Logout */}
+          {/* Right Actions: New Ticket + Notifications + User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
@@ -125,10 +149,114 @@ export const TopBar: React.FC<TopBarProps> = ({
               <span className="sm:hidden">Raporto</span>
             </button>
 
+            {/* Notification Bell */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen((v) => !v);
+                  setMenuOpen(false);
+                }}
+                aria-label="Njoftimet"
+                title="Njoftimet"
+                className={`${baseBtn} relative w-9 px-0 border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900`}
+              >
+                <Bell className={iconCls} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900">
+                        Njoftimet
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                          {unreadCount} të reja
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={onMarkAllNotificationsRead}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5" />
+                        <span>Shëno të lexuara</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="py-8 px-4 text-center">
+                      <Bell className="mx-auto h-6 w-6 text-slate-300 mb-2" />
+                      <p className="text-xs font-medium text-slate-500">
+                        Nuk keni njoftime të reja.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-1 max-h-80 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
+                      {notifications.map((n) => {
+                        const isUnread = !readNotificationIds.has(n.id);
+                        return (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={() => {
+                              setNotifOpen(false);
+                              onOpenNotificationTicket(n.ticket, n.id);
+                            }}
+                            className={`w-full text-left px-2.5 py-2.5 rounded-xl transition flex items-start gap-2.5 ${
+                              isUnread
+                                ? 'bg-blue-50/70 hover:bg-blue-50'
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <span
+                              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                                isUnread ? 'bg-blue-600' : 'bg-transparent'
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  {n.ticket.code}
+                                </span>
+                                <span className="text-[10px] text-slate-400 shrink-0">
+                                  {formatRelativeAlbanian(n.createdAt)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs font-semibold text-slate-900 line-clamp-1">
+                                {n.title}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-slate-600 line-clamp-2">
+                                {n.actor ? `${n.actor.name}: ` : ''}
+                                {n.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
-                onClick={() => setMenuOpen((v) => !v)}
+                onClick={() => {
+                  setMenuOpen((v) => !v);
+                  setNotifOpen(false);
+                }}
                 className={`${baseBtn} gap-1.5 sm:gap-2 border border-slate-200 bg-white pl-1 pr-2 text-left hover:border-slate-300 hover:bg-slate-50`}
               >
                 <span

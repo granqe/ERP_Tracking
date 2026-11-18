@@ -47,6 +47,11 @@ import {
   EMPTY_TICKET_FILTERS,
   parseUrlState,
 } from './utils/urlSync';
+import {
+  buildNotificationsForUser,
+  getReadNotificationIds,
+  saveReadNotificationIds,
+} from './utils/notifications';
 
 const SESSION_USER_KEY = 'erp_tracker_session_user_id';
 const EMPTY_FILTERS = EMPTY_TICKET_FILTERS;
@@ -189,6 +194,52 @@ export function App() {
     if (!currentUser) return [];
     return getVisibleTicketsForUser(tickets, currentUser, users);
   }, [tickets, currentUser, users]);
+
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(
+    () => (currentUserId ? getReadNotificationIds(currentUserId) : new Set())
+  );
+
+  useEffect(() => {
+    if (currentUserId) {
+      setReadNotificationIds(getReadNotificationIds(currentUserId));
+    } else {
+      setReadNotificationIds(new Set());
+    }
+  }, [currentUserId]);
+
+  const notifications = useMemo(() => {
+    if (!currentUser) return [];
+    return buildNotificationsForUser(currentUser, events, visibleTickets, users);
+  }, [currentUser, events, visibleTickets, users]);
+
+  const handleOpenNotificationTicket = (
+    ticket: Ticket,
+    notificationId: string
+  ) => {
+    if (currentUser) {
+      setReadNotificationIds((prev) => {
+        const next = new Set(prev);
+        next.add(notificationId);
+        saveReadNotificationIds(currentUser.id, next);
+        return next;
+      });
+    }
+    setActiveTab('work_board');
+    setIsTeamModalOpen(false);
+    setSelectedTicketId(ticket.id);
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    if (!currentUser) return;
+    setReadNotificationIds((prev) => {
+      const next = new Set(prev);
+      for (const n of notifications) {
+        next.add(n.id);
+      }
+      saveReadNotificationIds(currentUser.id, next);
+      return next;
+    });
+  };
 
   const selectedTicket = useMemo(
     () => visibleTickets.find((t) => t.id === selectedTicketId) || null,
@@ -517,9 +568,13 @@ export function App() {
       <TopBar
         currentUser={currentUser}
         activeTab={activeTab}
+        notifications={notifications}
+        readNotificationIds={readNotificationIds}
         onTabChange={setActiveTab}
         onOpenNewTicket={() => setIsNewTicketOpen(true)}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
+        onOpenNotificationTicket={handleOpenNotificationTicket}
+        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         onLogout={handleLogout}
       />
 
