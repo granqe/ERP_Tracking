@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   role TEXT NOT NULL CHECK (role IN ('Staf', 'Programer', 'Menaxher')),
   department TEXT NOT NULL,
   specialty TEXT,
+  email TEXT,
   avatar_color TEXT DEFAULT '#1d4ed8',
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -24,6 +25,21 @@ CREATE TABLE IF NOT EXISTS public.departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT UNIQUE NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 1c. Konfigurimi i Email-it (SMTP / IMAP)
+CREATE TABLE IF NOT EXISTS public.email_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  smtp_host TEXT NOT NULL DEFAULT '',
+  smtp_port INTEGER NOT NULL DEFAULT 587,
+  smtp_secure BOOLEAN NOT NULL DEFAULT false,
+  imap_host TEXT NOT NULL DEFAULT '',
+  imap_port INTEGER NOT NULL DEFAULT 993,
+  email_user TEXT NOT NULL DEFAULT '',
+  email_pass TEXT NOT NULL DEFAULT '',
+  from_name TEXT NOT NULL DEFAULT 'ERP Migrim & Gjurmues',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- 2. Tabela e Moduleve të ERP-së
@@ -137,6 +153,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_events;
 -- Politika RLS (Për testim të shpejtë pa Supabase Auth; përshtateni për prodhim me auth.uid())
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.erp_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rollout_phases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
@@ -144,6 +161,7 @@ ALTER TABLE public.ticket_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Akses i hapur demo - users" ON public.users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - departments" ON public.departments FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Akses i hapur demo - email_settings" ON public.email_settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - erp_modules" ON public.erp_modules FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - rollout_phases" ON public.rollout_phases FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - tickets" ON public.tickets FOR ALL USING (true) WITH CHECK (true);

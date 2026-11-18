@@ -19,10 +19,14 @@ import {
   addComment,
   assignTicket,
   createTicket,
+  DEFAULT_EMAIL_SETTINGS,
   deleteDepartment,
   deleteUser,
   loadAllData,
+  loadEmailSettings,
   overridePriority,
+  saveEmailSettings,
+  sendEmailNotification,
   setTicketDeadline,
   subscribeRealtime,
   transitionTicketStatus,
@@ -32,6 +36,7 @@ import {
 } from './services/dataService';
 import type {
   Department,
+  EmailSettings,
   ErpModule,
   RolloutPhase,
   Ticket,
@@ -74,6 +79,9 @@ export function App() {
   const [phases, setPhases] = useState<RolloutPhase[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>(
+    DEFAULT_EMAIL_SETTINGS
+  );
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(() =>
     localStorage.getItem(SESSION_USER_KEY)
@@ -115,13 +123,17 @@ export function App() {
       if (!health.connected) {
         return;
       }
-      const data = await loadAllData();
+      const [data, loadedEmail] = await Promise.all([
+        loadAllData(),
+        loadEmailSettings(),
+      ]);
       setUsers(data.users);
       setDepartments(data.departments);
       setModules(data.modules);
       setPhases(data.phases);
       setTickets(data.tickets);
       setEvents(data.events);
+      setEmailSettings(loadedEmail);
     } catch (err) {
       console.error('Gabim gjatë ngarkimit të të dhënave:', err);
       setDbHealth({
@@ -327,6 +339,32 @@ export function App() {
     selectedTicket,
   ]);
 
+  const sendTicketEmail = useCallback(
+    (recipients: string[], ticket: Ticket, subject: string, bodyText: string) => {
+      if (!emailSettings.enabled) return;
+      const valid = Array.from(
+        new Set(recipients.map((r) => r.trim()).filter((r) => r.includes('@')))
+      );
+      if (valid.length === 0) return;
+
+      const ticketUrl = `${window.location.origin}/tabela?tiketa=${encodeURIComponent(
+        ticket.code
+      )}`;
+      const text = `${bodyText}\n\nTiketa: ${ticket.code} - ${ticket.title}\nModuli: ${ticket.module}\nStatusi: ${ticket.status}\nShiko në sistem: ${ticketUrl}`;
+      const html = `<div style="font-family:sans-serif;line-height:1.5;color:#0f172a">
+        <p>${bodyText.replace(/\n/g, '<br/>')}</p>
+        <p style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:8px">
+          <strong>${ticket.code}</strong> — ${ticket.title}<br/>
+          <span style="color:#475569;font-size:13px">Moduli: ${ticket.module} • Statusi: ${ticket.status}</span>
+        </p>
+        <p><a href="${ticketUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600">Hap Tiketën</a></p>
+      </div>`;
+
+      void sendEmailNotification({ to: valid, subject, text, html });
+    },
+    [emailSettings.enabled]
+  );
+
   // Actions
   const handleCreateTicket = async (input: {
     title: string;
@@ -350,6 +388,19 @@ export function App() {
         ? `Tiketa ${ticket.code} u hap dhe iu delegua automatikisht ${assignedDev.name}!`
         : `Tiketa ${ticket.code} u raportua me sukses!`
     );
+
+    const devEmails = assignedDev?.email
+      ? [assignedDev.email]
+      : users
+          .filter((u) => u.role === 'Programer' && u.active && u.email)
+          .map((u) => u.email as string);
+
+    sendTicketEmail(
+      devEmails,
+      ticket,
+      `[${ticket.code}] Kërkesë e re: ${ticket.title}`,
+      `${currentUser.name} (${currentUser.department}) hapi një kërkesë të re me prioritet "${ticket.priority}".\n\nPërshkrimi: ${ticket.description}`
+    );
   };
 
   const handleStatusChange = async (
@@ -371,6 +422,16 @@ export function App() {
         ? `Tiketa ${ticket.code} u konfirmua dhe u mbyll!`
         : `Statusi i ${ticket.code} u ndryshua në "${newStatus}".`
     );
+
+    const reporter = users.find((u) => u.id === ticket.created_by);
+    if (reporter?.email && reporter.id !== currentUser.id) {
+      sendTicketEmail(
+        [reporter.email],
+        updated,
+        `[${ticket.code}] Ndryshim statusi: ${newStatus}`,
+        `${currentUser.name} ndryshoi statusin e kërkesës suaj në "${newStatus}".`
+      );
+    }
   };
 
   const handleConfirmResolve = async (
@@ -391,6 +452,16 @@ export function App() {
     showToast(
       `Tiketa ${ticket.code} u dërgua për testim (UAT) te raportuesi.`
     );
+
+    const reporter = users.find((u) => u.id === ticket.created_by);
+    if (reporter?.email && reporter.id !== currentUser.id) {
+      sendTicketEmail(
+        [reporter.email],
+        updated,
+        `[${ticket.code}] Gati për testim: ${ticket.title}`,
+        `${currentUser.name} e përfundoi kërkesën tuaj.\n\nShënimi i zgjidhjes: ${resolutionNote}`
+      );
+    }
   };
 
   const handleConfirmBlock = async (ticket: Ticket, blockerReason: string) => {
@@ -406,6 +477,16 @@ export function App() {
     );
     setEvents((prev) => [event, ...prev]);
     showToast(`Tiketa ${ticket.code} u shënua si Bllokuar.`);
+
+    const reporter = users.find((u) => u.id === ticket.created_by);
+    if (reporter?.email && reporter.id !== currentUser.id) {
+      sendTicketEmail(
+        [reporter.email],
+        updated,
+        `[${ticket.code}] Kërkesa u shënua si Bllokuar`,
+        `${currentUser.name} e shënoi kërkesën si të bllokuar.\n\nArsyeja: ${blockerReason}`
+      );
+    }
   };
 
   const handleRejectUat = async (ticket: Ticket, reopenComment: string) => {
@@ -421,6 +502,16 @@ export function App() {
     );
     setEvents((prev) => [event, ...prev]);
     showToast(`Tiketa ${ticket.code} u kthye te programeri për rishikim.`);
+
+    const dev = users.find((u) => u.id === updated.assigned_to);
+    if (dev?.email && dev.id !== currentUser.id) {
+      sendTicketEmail(
+        [dev.email],
+        updated,
+        `[${ticket.code}] Kthyer për rregullim nga testimi`,
+        `${currentUser.name} e ktheu tiketën për rishikim.\n\nKomenti: ${reopenComment}`
+      );
+    }
   };
 
   const handleAssignDeveloper = async (
@@ -483,6 +574,30 @@ export function App() {
     if (!currentUser) return;
     const ev = await addComment(ticketId, message, currentUser);
     setEvents((prev) => [ev, ...prev]);
+
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (!ticket) return;
+    if (currentUser.role === 'Staf') {
+      const dev = users.find((u) => u.id === ticket.assigned_to);
+      if (dev?.email && dev.id !== currentUser.id) {
+        sendTicketEmail(
+          [dev.email],
+          ticket,
+          `[${ticket.code}] Koment i ri nga ${currentUser.name}`,
+          `${currentUser.name} shtoi një koment:\n\n"${message}"`
+        );
+      }
+    } else {
+      const reporter = users.find((u) => u.id === ticket.created_by);
+      if (reporter?.email && reporter.id !== currentUser.id) {
+        sendTicketEmail(
+          [reporter.email],
+          ticket,
+          `[${ticket.code}] Koment i ri nga ${currentUser.name}`,
+          `${currentUser.name} shtoi një koment në kërkesën tuaj:\n\n"${message}"`
+        );
+      }
+    }
   };
 
   const handleSaveUser = async (
@@ -553,6 +668,26 @@ export function App() {
     await deleteDepartment(deptId);
     setDepartments((prev) => prev.filter((d) => d.id !== deptId));
     showToast('Departamenti u fshi nga sistemi.');
+  };
+
+  const handleSaveEmailSettings = async (
+    settings: Omit<EmailSettings, 'id' | 'updated_at'>
+  ) => {
+    const saved = await saveEmailSettings(settings);
+    setEmailSettings(saved);
+    showToast('Konfigurimi i email-it u ruajt me sukses.');
+  };
+
+  const handleSendTestEmail = async (
+    toEmail: string,
+    config: EmailSettings
+  ) => {
+    return sendEmailNotification({
+      to: toEmail,
+      subject: 'Test i Konfigurimit të Email-it — ERP Migrim & Gjurmues',
+      text: 'Ky është një email testues nga sistemi ERP Migrim & Gjurmues. Konfigurimi juaj po punon me sukses!',
+      testConfig: config,
+    });
   };
 
   if (loading) {
@@ -678,12 +813,15 @@ export function App() {
           departments={departments}
           modules={modules}
           phases={phases}
+          emailSettings={emailSettings}
           onClose={() => setIsTeamModalOpen(false)}
           onSaveUser={handleSaveUser}
           onDeleteUser={handleDeleteUser}
           onSaveModule={handleSaveModule}
           onSaveDepartment={handleSaveDepartment}
           onDeleteDepartment={handleDeleteDepartment}
+          onSaveEmailSettings={handleSaveEmailSettings}
+          onSendTestEmail={handleSendTestEmail}
         />
       )}
 

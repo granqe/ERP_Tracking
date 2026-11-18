@@ -3,6 +3,7 @@ import { hashPassword } from '../utils/auth';
 import { DEPARTMENTS } from '../types';
 import type {
   Department,
+  EmailSettings,
   ErpModule,
   EventType,
   PhaseStatus,
@@ -370,6 +371,7 @@ export async function upsertUser(
     role: userInput.role,
     department: userInput.department,
     specialty: userInput.specialty?.trim() || '',
+    email: userInput.email?.trim() || null,
     avatar_color: userInput.avatar_color || '#1d4ed8',
     active: userInput.active,
     created_at: nowIso,
@@ -478,4 +480,88 @@ export async function deleteDepartment(deptId: string): Promise<void> {
   const client = requireSupabase();
   const { error } = await client.from('departments').delete().eq('id', deptId);
   if (error) throw error;
+}
+
+export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
+  id: 'default',
+  enabled: false,
+  smtp_host: '',
+  smtp_port: 587,
+  smtp_secure: false,
+  imap_host: '',
+  imap_port: 993,
+  email_user: '',
+  email_pass: '',
+  from_name: 'ERP Migrim & Gjurmues',
+};
+
+export async function loadEmailSettings(): Promise<EmailSettings> {
+  if (!supabase) return DEFAULT_EMAIL_SETTINGS;
+  const { data, error } = await supabase
+    .from('email_settings')
+    .select('*')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  if (error || !data) return DEFAULT_EMAIL_SETTINGS;
+  return data as EmailSettings;
+}
+
+export async function saveEmailSettings(
+  settings: Omit<EmailSettings, 'id' | 'updated_at'>
+): Promise<EmailSettings> {
+  const client = requireSupabase();
+  const payload: EmailSettings = {
+    id: 'default',
+    enabled: settings.enabled,
+    smtp_host: settings.smtp_host.trim(),
+    smtp_port: Number(settings.smtp_port) || 587,
+    smtp_secure: settings.smtp_secure,
+    imap_host: settings.imap_host.trim(),
+    imap_port: Number(settings.imap_port) || 993,
+    email_user: settings.email_user.trim(),
+    email_pass: settings.email_pass,
+    from_name: settings.from_name.trim() || 'ERP Migrim & Gjurmues',
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await client
+    .from('email_settings')
+    .upsert(payload)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as EmailSettings;
+}
+
+export async function sendEmailNotification(payload: {
+  to: string | string[];
+  subject: string;
+  text: string;
+  html?: string;
+  testConfig?: EmailSettings;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+    };
+    if (!res.ok || !json.ok) {
+      return {
+        ok: false,
+        error: json.error || `Gabim HTTP ${res.status}`,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Gabim në rrjet.',
+    };
+  }
 }

@@ -41,9 +41,24 @@ export interface User {
   role: UserRole;
   department: string;
   specialty?: string;
+  email?: string | null;
   avatar_color: string;
   active: boolean;
   created_at: string;
+}
+
+export interface EmailSettings {
+  id: string;
+  enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_secure: boolean;
+  imap_host: string;
+  imap_port: number;
+  email_user: string;
+  email_pass: string;
+  from_name: string;
+  updated_at?: string;
 }
 
 export interface Department {
