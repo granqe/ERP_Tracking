@@ -165,6 +165,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     message: string;
   } | null>(null);
 
+  const [autofillGuard, setAutofillGuard] = useState(true);
+
   useEffect(() => {
     setEmailEnabled(emailSettings.enabled);
     setSmtpHost(emailSettings.smtp_host);
@@ -176,6 +178,26 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setEmailPass(emailSettings.email_pass);
     setFromName(emailSettings.from_name || 'ERP Migrim & Gjurmues');
   }, [emailSettings]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setEditingUserId(undefined);
+    setName('');
+    setUsername('');
+    setPassword('');
+    setRole('Staf');
+    setDepartment(departments[0]?.name || 'Menaxhim Projekti');
+    setCustomDeptMode(false);
+    setCustomDeptName('');
+    setSpecialty('');
+    setUserEmail('');
+    setActive(true);
+    setShowPassword(false);
+    setSendCredentialsEmail(false);
+    setConfirmDeleteId(null);
+    setConfirmSendCredsId(null);
+    setAutofillGuard(true);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -442,6 +464,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
               {/* Add/Edit User Form */}
               <form
                 onSubmit={handleUserSubmit}
+                autoComplete="off"
                 className="lg:col-span-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 h-fit"
               >
                 <div className="flex items-center justify-between">
@@ -471,6 +494,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                   <input
                     required
                     type="text"
+                    name="erp_full_name"
+                    autoComplete="off"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="p.sh. Erion Berisha"
@@ -486,6 +511,12 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                     <input
                       required
                       type="text"
+                      name="erp_new_username"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-form-type="other"
+                      readOnly={autofillGuard}
+                      onFocus={() => setAutofillGuard(false)}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="p.sh. erion.berisha"
@@ -503,6 +534,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
+                          setAutofillGuard(false);
                           const generated = generateRandomPassword(10);
                           setPassword(generated);
                           setShowPassword(true);
@@ -521,6 +553,12 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                       <input
                         required={!editingUserId}
                         type={showPassword ? 'text' : 'password'}
+                        name="erp_new_password"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-form-type="other"
+                        readOnly={autofillGuard}
+                        onFocus={() => setAutofillGuard(false)}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={
