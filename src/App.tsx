@@ -47,6 +47,7 @@ import type {
   TicketType,
   User,
 } from './types';
+import { hashPassword } from './utils/auth';
 import { getVisibleTicketsForUser } from './utils/formatters';
 import {
   buildUrlFromState,
@@ -605,7 +606,8 @@ export function App() {
       id?: string;
       password?: string;
       password_hash?: string;
-    }
+    },
+    options?: { sendCredentialsEmail?: boolean }
   ) => {
     const saved = await upsertUser(userInput);
     setUsers((prev) => {
@@ -614,7 +616,94 @@ export function App() {
         ? prev.map((u) => (u.id === saved.id ? saved : u))
         : [...prev, saved];
     });
+
+    if (
+      options?.sendCredentialsEmail &&
+      saved.email &&
+      userInput.password?.trim()
+    ) {
+      if (!emailSettings.enabled) {
+        showToast(
+          `Përdoruesi ${saved.name} u ruajt, por email-i nuk u dërgua sepse SMTP nuk është aktivizuar.`
+        );
+        return;
+      }
+
+      const loginUrl = `${window.location.origin}/hyrja`;
+      const plainPassword = userInput.password.trim();
+      const subject = 'Kredencialet e qasjes — ERP Migrim & Gjurmues';
+      const text = [
+        `Përshëndetje ${saved.name},`,
+        '',
+        'Llogaria juaj në sistemin ERP Migrim & Gjurmues është gati.',
+        '',
+        `Linku i aplikacionit: ${loginUrl}`,
+        `Emri i përdoruesit: ${saved.username}`,
+        `Fjalëkalimi i përkohshëm: ${plainPassword}`,
+        '',
+        'Pasi të logoheni, mund ta ndryshoni fjalëkalimin duke klikuar te profili juaj lart djathtas -> "Ndrysho Fjalëkalimin".',
+      ].join('\n');
+
+      const html = `<div style="font-family:sans-serif;line-height:1.6;color:#0f172a;max-width:560px">
+        <p>Përshëndetje <strong>${saved.name}</strong>,</p>
+        <p>Llogaria juaj në sistemin <strong>ERP Migrim &amp; Gjurmues</strong> është krijuar/përditësuar.</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:14px 16px;border-radius:10px;margin:14px 0">
+          <div><strong>Emri i përdoruesit:</strong> ${saved.username}</div>
+          <div><strong>Fjalëkalimi i përkohshëm:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;font-weight:700">${plainPassword}</code></div>
+        </div>
+        <p><a href="${loginUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Hyr në Aplikacion</a></p>
+        <p style="font-size:13px;color:#475569">Pasi të logoheni, ju rekomandojmë ta ndryshoni fjalëkalimin nga profili juaj (lart djathtas &rarr; <em>Ndrysho Fjalëkalimin</em>).</p>
+      </div>`;
+
+      const emailRes = await sendEmailNotification({
+        to: saved.email,
+        subject,
+        text,
+        html,
+      });
+
+      if (emailRes.ok) {
+        showToast(
+          `Përdoruesi ${saved.name} u ruajt dhe kredencialet u dërguan në ${saved.email}.`
+        );
+      } else {
+        showToast(
+          `Përdoruesi ${saved.name} u ruajt, por email-i dështoi: ${
+            emailRes.error || 'Gabim i panjohur'
+          }`
+        );
+      }
+      return;
+    }
+
     showToast(`Përdoruesi ${saved.name} u ruajt me sukses.`);
+  };
+
+  const handleChangePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ) => {
+    if (!currentUser) return;
+    if (currentUser.password_hash) {
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== currentUser.password_hash) {
+        throw new Error('Fjalëkalimi aktual është i pasaktë.');
+      }
+    }
+    const updated = await upsertUser({
+      id: currentUser.id,
+      name: currentUser.name,
+      username: currentUser.username,
+      password: newPassword,
+      role: currentUser.role,
+      department: currentUser.department,
+      specialty: currentUser.specialty,
+      email: currentUser.email,
+      avatar_color: currentUser.avatar_color,
+      active: currentUser.active,
+    });
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    showToast('Fjalëkalimi u ndryshua me sukses.');
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -728,6 +817,7 @@ export function App() {
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         onOpenNotificationTicket={handleOpenNotificationTicket}
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+        onChangePassword={handleChangePassword}
         onLogout={handleLogout}
       />
 

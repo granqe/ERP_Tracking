@@ -4,8 +4,11 @@ import {
   Building2,
   CheckCircle2,
   Edit3,
+  Eye,
+  EyeOff,
   Mail,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Trash2,
@@ -22,6 +25,7 @@ import type {
   User,
   UserRole,
 } from '../types';
+import { generateRandomPassword } from '../utils/auth';
 import { getInitials, getRoleBadgeClass } from '../utils/formatters';
 
 interface TeamAndModulesModalProps {
@@ -38,7 +42,8 @@ interface TeamAndModulesModalProps {
       id?: string;
       password?: string;
       password_hash?: string;
-    }
+    },
+    options?: { sendCredentialsEmail?: boolean }
   ) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onSaveModule: (
@@ -108,6 +113,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [specialty, setSpecialty] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [active, setActive] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendCredentialsEmail, setSendCredentialsEmail] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
 
   // Module form state
@@ -187,6 +194,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setSpecialty('');
     setUserEmail('');
     setActive(true);
+    setShowPassword(false);
+    setSendCredentialsEmail(false);
   };
 
   const handleEditUser = (u: User) => {
@@ -199,6 +208,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setSpecialty(u.specialty || '');
     setUserEmail(u.email || '');
     setActive(u.active);
+    setShowPassword(false);
+    setSendCredentialsEmail(false);
   };
 
   const handleToggleActive = async (u: User) => {
@@ -224,21 +235,28 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setSavingUser(true);
     try {
       const existing = users.find((u) => u.id === editingUserId);
-      await onSaveUser({
-        id: editingUserId,
-        name,
-        username,
-        password: password.trim() || undefined,
-        password_hash: existing?.password_hash,
-        role,
-        department,
-        specialty,
-        email: userEmail.trim() || null,
-        active,
-        avatar_color:
-          existing?.avatar_color ||
-          AVATAR_COLORS[users.length % AVATAR_COLORS.length],
-      });
+      const canSendEmail =
+        sendCredentialsEmail &&
+        userEmail.trim().includes('@') &&
+        password.trim().length > 0;
+      await onSaveUser(
+        {
+          id: editingUserId,
+          name,
+          username,
+          password: password.trim() || undefined,
+          password_hash: existing?.password_hash,
+          role,
+          department,
+          specialty,
+          email: userEmail.trim() || null,
+          active,
+          avatar_color:
+            existing?.avatar_color ||
+            AVATAR_COLORS[users.length % AVATAR_COLORS.length],
+        },
+        { sendCredentialsEmail: canSendEmail }
+      );
       resetUserForm();
     } finally {
       setSavingUser(false);
@@ -450,19 +468,57 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
-                      {editingUserId
-                        ? 'Fjalëkalim i ri (opsional)'
-                        : 'Fjalëkalimi *'}
-                    </label>
-                    <input
-                      required={!editingUserId}
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={editingUserId ? 'Lëre bosh nëse s’ndryshon' : '••••••••'}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="block text-xs font-medium text-slate-700">
+                        {editingUserId
+                          ? 'Fjalëkalim i ri (opsional)'
+                          : 'Fjalëkalimi *'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const generated = generateRandomPassword(10);
+                          setPassword(generated);
+                          setShowPassword(true);
+                          if (userEmail.trim().includes('@')) {
+                            setSendCredentialsEmail(true);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 transition"
+                        title="Gjenero fjalëkalim të rastësishëm"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Gjenero</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        required={!editingUserId}
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={
+                          editingUserId ? 'Lëre bosh nëse s’ndryshon' : '••••••••'
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={
+                          showPassword
+                            ? 'Fshih fjalëkalimin'
+                            : 'Shfaq fjalëkalimin'
+                        }
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -520,26 +576,72 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Email (për njoftime, opsional)
+                    Email (për njoftime & kredenciale, opsional)
                   </label>
                   <input
                     type="email"
                     value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserEmail(val);
+                      if (!val.trim().includes('@')) {
+                        setSendCredentialsEmail(false);
+                      }
+                    }}
                     placeholder="emri@kompania.com"
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
-                <label className="flex items-center gap-2 text-xs font-medium text-slate-700 pt-1">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={(e) => setActive(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Llogari Aktive</span>
-                </label>
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      onChange={(e) => setActive(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Llogari Aktive</span>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2 text-xs font-medium ${
+                      userEmail.trim().includes('@') && password.trim().length > 0
+                        ? 'text-slate-700'
+                        : 'text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={
+                        !userEmail.trim().includes('@') ||
+                        password.trim().length === 0
+                      }
+                      checked={
+                        sendCredentialsEmail &&
+                        userEmail.trim().includes('@') &&
+                        password.trim().length > 0
+                      }
+                      onChange={(e) => setSendCredentialsEmail(e.target.checked)}
+                      className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                    <span>
+                      Dërgo me email linkun e aplikacionit dhe kredencialet
+                      <span className="block text-[11px] font-normal text-slate-500">
+                        Kërkon email të vlefshëm dhe fjalëkalim të vendosur.
+                      </span>
+                    </span>
+                  </label>
+                  {sendCredentialsEmail &&
+                    userEmail.trim().includes('@') &&
+                    password.trim().length > 0 &&
+                    !emailSettings.enabled && (
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800">
+                        Kujdes: Dërgimi i email-eve nuk është aktivizuar te tabi{' '}
+                        <strong>Email (SMTP / IMAP)</strong>.
+                      </p>
+                    )}
+                </div>
 
                 <button
                   type="submit"

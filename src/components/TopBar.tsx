@@ -3,12 +3,16 @@ import {
   Bell,
   CheckCheck,
   ChevronDown,
+  Eye,
+  EyeOff,
   Kanban,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Plus,
   ShieldCheck,
   Users,
+  X,
 } from 'lucide-react';
 import type { Ticket, User } from '../types';
 import {
@@ -30,6 +34,10 @@ interface TopBarProps {
   onOpenTeamModal: () => void;
   onOpenNotificationTicket: (ticket: Ticket, notificationId: string) => void;
   onMarkAllNotificationsRead: () => void;
+  onChangePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<void>;
   onLogout: () => void;
 }
 
@@ -43,10 +51,18 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenTeamModal,
   onOpenNotificationTicket,
   onMarkAllNotificationsRead,
+  onChangePassword,
   onLogout,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [pwModalOpen, setPwModalOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [savingPw, setSavingPw] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -311,14 +327,30 @@ export const TopBar: React.FC<TopBarProps> = ({
                     </div>
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-slate-100">
+                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setCurrentPw('');
+                        setNewPw('');
+                        setConfirmPw('');
+                        setShowNewPw(false);
+                        setPwError(null);
+                        setPwModalOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <KeyRound className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Ndrysho Fjalëkalimin</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false);
                         onLogout();
                       }}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                       <span>Dil nga llogaria</span>
@@ -330,6 +362,137 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
       </div>
+
+      {pwModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Ndrysho Fjalëkalimin
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPwModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-200/70 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setPwError(null);
+                if (newPw.trim().length < 6) {
+                  setPwError(
+                    'Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere.'
+                  );
+                  return;
+                }
+                if (newPw !== confirmPw) {
+                  setPwError('Fjalëkalimet e reja nuk përputhen.');
+                  return;
+                }
+                setSavingPw(true);
+                try {
+                  await onChangePassword(currentPw, newPw);
+                  setPwModalOpen(false);
+                } catch (err) {
+                  setPwError(
+                    err instanceof Error
+                      ? err.message
+                      : 'Gabim gjatë ndryshimit të fjalëkalimit.'
+                  );
+                } finally {
+                  setSavingPw(false);
+                }
+              }}
+              className="p-5 space-y-3.5"
+            >
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Fjalëkalimi aktual *
+                </label>
+                <input
+                  required
+                  type="password"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  placeholder="Shkruani fjalëkalimin aktual"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Fjalëkalimi i ri *
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    type={showNewPw ? 'text' : 'password'}
+                    value={newPw}
+                    onChange={(e) => setNewPw(e.target.value)}
+                    placeholder="Minimum 6 karaktere"
+                    className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPw((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  >
+                    {showNewPw ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Konfirmo fjalëkalimin e ri *
+                </label>
+                <input
+                  required
+                  type={showNewPw ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Përsëritni fjalëkalimin e ri"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {pwError && (
+                <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                  {pwError}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPwModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Anulo
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPw}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {savingPw ? 'Duke ruajtur...' : 'Ruaj Fjalëkalimin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
