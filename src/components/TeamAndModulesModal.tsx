@@ -110,6 +110,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [department, setDepartment] = useState(
     departments[0]?.name || 'Menaxhim Projekti'
   );
+  const [customDeptMode, setCustomDeptMode] = useState(false);
+  const [customDeptName, setCustomDeptName] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [active, setActive] = useState(true);
@@ -191,6 +193,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setPassword('');
     setRole('Staf');
     setDepartment(departments[0]?.name || 'Menaxhim Projekti');
+    setCustomDeptMode(false);
+    setCustomDeptName('');
     setSpecialty('');
     setUserEmail('');
     setActive(true);
@@ -205,6 +209,8 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setPassword('');
     setRole(u.role);
     setDepartment(u.department);
+    setCustomDeptMode(false);
+    setCustomDeptName('');
     setSpecialty(u.specialty || '');
     setUserEmail(u.email || '');
     setActive(u.active);
@@ -232,9 +238,23 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     e.preventDefault();
     if (!name.trim() || !username.trim()) return;
     if (!editingUserId && !password.trim()) return;
+    if (customDeptMode && !customDeptName.trim()) return;
     setSavingUser(true);
     try {
       const existing = users.find((u) => u.id === editingUserId);
+      let finalDepartment = department.trim();
+      if (customDeptMode) {
+        const trimmedCustom = customDeptName.trim();
+        const existingDept = departments.find(
+          (d) => d.name.toLowerCase() === trimmedCustom.toLowerCase()
+        );
+        if (existingDept) {
+          finalDepartment = existingDept.name;
+        } else {
+          await onSaveDepartment({ name: trimmedCustom });
+          finalDepartment = trimmedCustom;
+        }
+      }
       const canSendEmail =
         sendCredentialsEmail &&
         userEmail.trim().includes('@') &&
@@ -247,7 +267,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
           password: password.trim() || undefined,
           password_hash: existing?.password_hash,
           role,
-          department,
+          department: finalDepartment,
           specialty,
           email: userEmail.trim() || null,
           active,
@@ -539,25 +559,55 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
-                      Departamenti *
-                    </label>
-                    <select
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    >
-                      {Array.from(
-                        new Set([
-                          ...departments.map((d) => d.name),
-                          ...(department ? [department] : []),
-                        ])
-                      ).map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="block text-xs font-medium text-slate-700">
+                        Departamenti *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomDeptMode((v) => !v);
+                          setCustomDeptName('');
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 transition"
+                      >
+                        {customDeptMode ? (
+                          <span>Zgjidh nga lista</span>
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3" />
+                            <span>Shkruaj të ri</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {customDeptMode ? (
+                      <input
+                        required
+                        type="text"
+                        value={customDeptName}
+                        onChange={(e) => setCustomDeptName(e.target.value)}
+                        placeholder="p.sh. Logjistikë"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    ) : (
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      >
+                        {Array.from(
+                          new Set([
+                            ...departments.map((d) => d.name),
+                            ...(department ? [department] : []),
+                          ])
+                        ).map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
