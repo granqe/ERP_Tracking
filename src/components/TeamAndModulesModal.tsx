@@ -133,7 +133,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     setUsername('');
     setPassword('');
     setRole('Staf');
-    setDepartment(DEPARTMENTS[1]);
+    setDepartment(departments[0]?.name || 'Menaxhim Projekti');
     setSpecialty('');
     setActive(true);
   };
