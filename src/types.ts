@@ -46,6 +46,12 @@ export interface User {
   created_at: string;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface ErpModule {
   id: string;
   name: string;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Boxes,
+  Building2,
   CheckCircle2,
   Edit3,
   Plus,
@@ -11,14 +12,20 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { DEPARTMENTS } from '../types';
-import type { ErpModule, RolloutPhase, User, UserRole } from '../types';
+import type {
+  Department,
+  ErpModule,
+  RolloutPhase,
+  User,
+  UserRole,
+} from '../types';
 import { getInitials, getRoleBadgeClass } from '../utils/formatters';
 
 interface TeamAndModulesModalProps {
   isOpen: boolean;
   currentUserId: string;
   users: User[];
+  departments: Department[];
   modules: ErpModule[];
   phases: RolloutPhase[];
   onClose: () => void;
@@ -36,6 +43,12 @@ interface TeamAndModulesModalProps {
       is_default?: boolean;
     }
   ) => Promise<void>;
+  onSaveDepartment: (dept: {
+    id?: string;
+    name: string;
+    previousName?: string;
+  }) => Promise<void>;
+  onDeleteDepartment: (deptId: string) => Promise<void>;
 }
 
 const AVATAR_COLORS = [
@@ -52,14 +65,17 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   isOpen,
   currentUserId,
   users,
+  departments,
   modules,
   phases,
   onClose,
   onSaveUser,
   onDeleteUser,
   onSaveModule,
+  onSaveDepartment,
+  onDeleteDepartment,
 }) => {
-  const [tab, setTab] = useState<'team' | 'modules'>('team');
+  const [tab, setTab] = useState<'team' | 'modules' | 'departments'>('team');
   const [userSearch, setUserSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -70,7 +86,9 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('Staf');
-  const [department, setDepartment] = useState(DEPARTMENTS[1]);
+  const [department, setDepartment] = useState(
+    departments[0]?.name || 'Menaxhim Projekti'
+  );
   const [specialty, setSpecialty] = useState('');
   const [active, setActive] = useState(true);
   const [savingUser, setSavingUser] = useState(false);
@@ -81,6 +99,18 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [modDesc, setModDesc] = useState('');
   const [modPhase, setModPhase] = useState(1);
   const [savingMod, setSavingMod] = useState(false);
+
+  // Department form state
+  const [editingDeptId, setEditingDeptId] = useState<string | undefined>();
+  const [editingDeptPrevName, setEditingDeptPrevName] = useState<
+    string | undefined
+  >();
+  const [deptName, setDeptName] = useState('');
+  const [savingDept, setSavingDept] = useState(false);
+  const [deptError, setDeptError] = useState<string | null>(null);
+  const [confirmDeleteDeptId, setConfirmDeleteDeptId] = useState<string | null>(
+    null
+  );
 
   if (!isOpen) return null;
 
@@ -194,6 +224,44 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
     }
   };
 
+  const resetDeptForm = () => {
+    setEditingDeptId(undefined);
+    setEditingDeptPrevName(undefined);
+    setDeptName('');
+    setDeptError(null);
+  };
+
+  const handleEditDept = (d: Department) => {
+    setEditingDeptId(d.id);
+    setEditingDeptPrevName(d.name);
+    setDeptName(d.name);
+    setDeptError(null);
+  };
+
+  const handleDeptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = deptName.trim();
+    if (!trimmed) return;
+    setSavingDept(true);
+    setDeptError(null);
+    try {
+      await onSaveDepartment({
+        id: editingDeptId,
+        name: trimmed,
+        previousName: editingDeptPrevName,
+      });
+      resetDeptForm();
+    } catch (err) {
+      setDeptError(
+        err instanceof Error
+          ? err.message
+          : 'Gabim gjatë ruajtjes së departamentit.'
+      );
+    } finally {
+      setSavingDept(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
       <div className="w-full max-w-5xl max-h-[90vh] rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
@@ -218,11 +286,11 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 px-6 gap-4 bg-white">
+        <div className="flex overflow-x-auto border-b border-slate-200 px-6 gap-4 bg-white">
           <button
             type="button"
             onClick={() => setTab('team')}
-            className={`flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition ${
+            className={`flex shrink-0 items-center gap-2 py-3 text-sm font-semibold border-b-2 transition ${
               tab === 'team'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -234,7 +302,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
           <button
             type="button"
             onClick={() => setTab('modules')}
-            className={`flex items-center gap-2 py-3 text-sm font-semibold border-b-2 transition ${
+            className={`flex shrink-0 items-center gap-2 py-3 text-sm font-semibold border-b-2 transition ${
               tab === 'modules'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -242,6 +310,18 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
           >
             <Boxes className="h-4 w-4" />
             <span>Modulet e ERP-së ({modules.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('departments')}
+            className={`flex shrink-0 items-center gap-2 py-3 text-sm font-semibold border-b-2 transition ${
+              tab === 'departments'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Building2 className="h-4 w-4" />
+            <span>Departamentet ({departments.length})</span>
           </button>
         </div>
 
@@ -345,7 +425,12 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                       onChange={(e) => setDepartment(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
                     >
-                      {DEPARTMENTS.map((d) => (
+                      {Array.from(
+                        new Set([
+                          ...departments.map((d) => d.name),
+                          ...(department ? [department] : []),
+                        ])
+                      ).map((d) => (
                         <option key={d} value={d}>
                           {d}
                         </option>
@@ -546,7 +631,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                 </div>
               </div>
             </div>
-          ) : (
+          ) : tab === 'modules' ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Add/Edit Module Form */}
               <form
@@ -662,6 +747,137 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Add/Edit Department Form */}
+              <form
+                onSubmit={handleDeptSubmit}
+                className="lg:col-span-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 h-fit"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                    <span>
+                      {editingDeptId
+                        ? 'Ndrysho Departamentin'
+                        : 'Shto Departament të Ri'}
+                    </span>
+                  </h3>
+                  {editingDeptId && (
+                    <button
+                      type="button"
+                      onClick={resetDeptForm}
+                      className="text-xs text-slate-500 hover:text-slate-800"
+                    >
+                      Pastro
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Emri i Departamentit *
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={deptName}
+                    onChange={(e) => setDeptName(e.target.value)}
+                    placeholder="p.sh. Logjistika / Burimet Njerëzore"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                {deptError && (
+                  <p className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-700">
+                    {deptError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={savingDept}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {savingDept
+                    ? 'Duke ruajtur...'
+                    : editingDeptId
+                    ? 'Ruaj Departamentin'
+                    : 'Shto Departamentin'}
+                </button>
+              </form>
+
+              {/* Departments List */}
+              <div className="lg:col-span-7 space-y-2">
+                {departments.map((d) => {
+                  const userCount = users.filter(
+                    (u) => u.department === d.name
+                  ).length;
+                  const isFallback = d.id.startsWith('fallback-');
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {d.name}
+                          </p>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                            {userCount} përdorues
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleEditDept(d)}
+                          className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                          title="Ndrysho"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+
+                        {!isFallback &&
+                          (confirmDeleteDeptId === d.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await onDeleteDepartment(d.id);
+                                  setConfirmDeleteDeptId(null);
+                                  if (editingDeptId === d.id) resetDeptForm();
+                                }}
+                                className="rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700"
+                              >
+                                Konfirmo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteDeptId(null)}
+                                className="rounded-lg border border-slate-200 px-2 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                              >
+                                Jo
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteDeptId(d.id)}
+                              className="rounded-lg border border-slate-200 p-2 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                              title="Fshi departamentin"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

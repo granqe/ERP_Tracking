@@ -19,6 +19,13 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 1b. Tabela e Departamenteve
+CREATE TABLE IF NOT EXISTS public.departments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 2. Tabela e Moduleve të ERP-së
 CREATE TABLE IF NOT EXISTS public.erp_modules (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -121,6 +128,7 @@ CREATE TRIGGER trg_tickets_updated_at
 
 -- Aktivizimi i Realtime për përditësime të menjëhershme
 ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.erp_modules;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.rollout_phases;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
@@ -128,12 +136,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_events;
 
 -- Politika RLS (Për testim të shpejtë pa Supabase Auth; përshtateni për prodhim me auth.uid())
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.erp_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rollout_phases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ticket_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Akses i hapur demo - users" ON public.users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Akses i hapur demo - departments" ON public.departments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - erp_modules" ON public.erp_modules FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - rollout_phases" ON public.rollout_phases FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses i hapur demo - tickets" ON public.tickets FOR ALL USING (true) WITH CHECK (true);
@@ -154,6 +164,14 @@ VALUES (
   '#0f172a'
 )
 ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO public.departments (name) VALUES
+  ('Menaxhim Projekti'),
+  ('Financë'),
+  ('Support / Mirëmbajtje'),
+  ('Shitje'),
+  ('Teknologji (IT)')
+ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO public.erp_modules (name, description, rollout_phase, is_default) VALUES
   ('Financa & TVSH', 'Llogaritja e TVSH-së, bilancet dhe mbyllja mujore', 3, true),

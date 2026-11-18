@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { hashPassword } from '../utils/auth';
+import { DEPARTMENTS } from '../types';
 import type {
+  Department,
   ErpModule,
   EventType,
   PhaseStatus,
@@ -15,6 +17,7 @@ import type {
 
 export interface AppDataset {
   users: User[];
+  departments: Department[];
   modules: ErpModule[];
   phases: RolloutPhase[];
   tickets: Ticket[];
@@ -44,13 +47,24 @@ function generateId(): string {
 export async function loadAllData(): Promise<AppDataset> {
   const client = requireSupabase();
 
-  const [usersRes, modRes, phaseRes, ticketRes, eventRes] = await Promise.all([
-    client.from('users').select('*').order('created_at', { ascending: true }),
-    client.from('erp_modules').select('*').order('rollout_phase', { ascending: true }),
-    client.from('rollout_phases').select('*').order('id', { ascending: true }),
-    client.from('tickets').select('*').order('created_at', { ascending: false }),
-    client.from('ticket_events').select('*').order('created_at', { ascending: false }),
-  ]);
+  const [usersRes, deptRes, modRes, phaseRes, ticketRes, eventRes] =
+    await Promise.all([
+      client.from('users').select('*').order('created_at', { ascending: true }),
+      client.from('departments').select('*').order('name', { ascending: true }),
+      client
+        .from('erp_modules')
+        .select('*')
+        .order('rollout_phase', { ascending: true }),
+      client.from('rollout_phases').select('*').order('id', { ascending: true }),
+      client
+        .from('tickets')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      client
+        .from('ticket_events')
+        .select('*')
+        .order('created_at', { ascending: false }),
+    ]);
 
   if (usersRes.error) throw usersRes.error;
   if (modRes.error) throw modRes.error;
@@ -58,8 +72,29 @@ export async function loadAllData(): Promise<AppDataset> {
   if (ticketRes.error) throw ticketRes.error;
   if (eventRes.error) throw eventRes.error;
 
+  const loadedUsers = (usersRes.data as User[]) ?? [];
+  let loadedDepartments: Department[] = [];
+
+  if (deptRes.error) {
+    // Fallback nëse tabela departments nuk është krijuar ende në databazë
+    const uniqueNames = Array.from(
+      new Set([
+        ...DEPARTMENTS,
+        ...loadedUsers.map((u) => u.department).filter(Boolean),
+      ])
+    );
+    loadedDepartments = uniqueNames.map((name, idx) => ({
+      id: `fallback-${idx}`,
+      name,
+      created_at: new Date().toISOString(),
+    }));
+  } else {
+    loadedDepartments = (deptRes.data as Department[]) ?? [];
+  }
+
   return {
-    users: (usersRes.data as User[]) ?? [],
+    users: loadedUsers,
+    departments: loadedDepartments,
     modules: (modRes.data as ErpModule[]) ?? [],
     phases: (phaseRes.data as RolloutPhase[]) ?? [],
     tickets: (ticketRes.data as Ticket[]) ?? [],
@@ -77,6 +112,7 @@ export function subscribeRealtime(onChange: () => void): () => void {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ticket_events' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'erp_modules' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'rollout_phases' }, onChange)
     .subscribe();
@@ -394,4 +430,52 @@ export async function updateRolloutPhase(
     .single();
   if (error) throw error;
   return data as RolloutPhase;
+}
+
+export async function upsertDepartment(deptInput: {
+  id?: string;
+  name: string;
+  previousName?: string;
+}): Promise<Department> {
+  const client = requireSupabase();
+  const cleanName = deptInput.name.trim();
+  const isRealId = Boolean(deptInput.id && !deptInput.id.startsWith('fallback-'));
+
+  if (isRealId && deptInput.id) {
+    const { data, error } = await client
+      .from('departments')
+      .update({ name: cleanName })
+      .eq('id', deptInput.id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    if (deptInput.previousName && deptInput.previousName !== cleanName) {
+      await client
+        .from('users')
+        .update({ department: cleanName })
+        .eq('department', deptInput.previousName);
+    }
+    return data as Department;
+  }
+
+  const dept: Department = {
+    id: generateId(),
+    name: cleanName,
+    created_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await client
+    .from('departments')
+    .insert(dept)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Department;
+}
+
+export async function deleteDepartment(deptId: string): Promise<void> {
+  const client = requireSupabase();
+  const { error } = await client.from('departments').delete().eq('id', deptId);
+  if (error) throw error;
 }

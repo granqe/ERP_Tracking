@@ -19,6 +19,7 @@ import {
   addComment,
   assignTicket,
   createTicket,
+  deleteDepartment,
   deleteUser,
   loadAllData,
   overridePriority,
@@ -26,10 +27,12 @@ import {
   subscribeRealtime,
   transitionTicketStatus,
   updateRolloutPhase,
+  upsertDepartment,
   upsertErpModule,
   upsertUser,
 } from './services/dataService';
 import type {
+  Department,
   ErpModule,
   PhaseStatus,
   RolloutPhase,
@@ -68,6 +71,7 @@ export function App() {
     connected: false,
   });
   const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [modules, setModules] = useState<ErpModule[]>([]);
   const [phases, setPhases] = useState<RolloutPhase[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -115,6 +119,7 @@ export function App() {
       }
       const data = await loadAllData();
       setUsers(data.users);
+      setDepartments(data.departments);
       setModules(data.modules);
       setPhases(data.phases);
       setTickets(data.tickets);
@@ -521,6 +526,37 @@ export function App() {
     showToast(`Moduli "${saved.name}" u ruajt me sukses.`);
   };
 
+  const handleSaveDepartment = async (deptInput: {
+    id?: string;
+    name: string;
+    previousName?: string;
+  }) => {
+    const saved = await upsertDepartment(deptInput);
+    setDepartments((prev) => {
+      const exists = prev.some((d) => d.id === saved.id);
+      const next = exists
+        ? prev.map((d) => (d.id === saved.id ? saved : d))
+        : [...prev.filter((d) => !d.id.startsWith('fallback-')), saved];
+      return next.sort((a, b) => a.name.localeCompare(b.name));
+    });
+    if (deptInput.previousName && deptInput.previousName !== saved.name) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.department === deptInput.previousName
+            ? { ...u, department: saved.name }
+            : u
+        )
+      );
+    }
+    showToast(`Departamenti "${saved.name}" u ruajt me sukses.`);
+  };
+
+  const handleDeleteDepartment = async (deptId: string) => {
+    await deleteDepartment(deptId);
+    setDepartments((prev) => prev.filter((d) => d.id !== deptId));
+    showToast('Departamenti u fshi nga sistemi.');
+  };
+
   const handleUpdatePhase = async (
     phaseId: number,
     status: PhaseStatus,
@@ -659,12 +695,15 @@ export function App() {
           isOpen={isTeamModalOpen}
           currentUserId={currentUser.id}
           users={users}
+          departments={departments}
           modules={modules}
           phases={phases}
           onClose={() => setIsTeamModalOpen(false)}
           onSaveUser={handleSaveUser}
           onDeleteUser={handleDeleteUser}
           onSaveModule={handleSaveModule}
+          onSaveDepartment={handleSaveDepartment}
+          onDeleteDepartment={handleDeleteDepartment}
         />
       )}
 
