@@ -95,6 +95,7 @@ export interface Ticket {
   status: TicketStatus;
   created_by: string;
   assigned_to: string | null;
+  department?: string | null;
   deadline: string | null;
   blocker_reason: string | null;
   resolution_note: string | null;

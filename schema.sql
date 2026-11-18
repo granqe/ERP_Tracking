@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS public.tickets (
   )),
   created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
   assigned_to UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  department TEXT,
   deadline DATE,
   blocker_reason TEXT,
   resolution_note TEXT,

@@ -131,7 +131,8 @@ export function getVisibleTicketsForUser(
   allUsers: User[] = []
 ): Ticket[] {
   if (user.role === 'Staf') {
-    // Stafi sheh tiketat e veta dhe ato të kolegëve të të njëjtit departament
+    // Stafi sheh tiketat e veta, tiketat e caktuara për departamentin e tij,
+    // ose (kur tiketa s'ka departament të caktuar) tiketat e kolegëve të të njëjtit departament
     const dept = (user.department || '').trim().toLowerCase();
     const sameDeptIds = new Set(
       allUsers
@@ -139,7 +140,14 @@ export function getVisibleTicketsForUser(
         .map((u) => u.id)
     );
     return tickets
-      .filter((t) => t.created_by === user.id || sameDeptIds.has(t.created_by))
+      .filter((t) => {
+        if (t.created_by === user.id) return true;
+        const ticketDept = (t.department || '').trim().toLowerCase();
+        if (ticketDept !== '') {
+          return dept !== '' && ticketDept === dept;
+        }
+        return sameDeptIds.has(t.created_by);
+      })
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }
 

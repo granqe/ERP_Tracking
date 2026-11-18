@@ -157,6 +157,7 @@ export interface CreateTicketInput {
   type: TicketType;
   module: string;
   priority: TicketPriority;
+  department?: string | null;
 }
 
 export async function createTicket(
@@ -184,6 +185,7 @@ export async function createTicket(
     status: 'Në Pritje (Backlog)',
     created_by: actor.id,
     assigned_to: autoAssignee ? autoAssignee.id : null,
+    department: (input.department ?? actor.department) || null,
     deadline: null,
     blocker_reason: null,
     resolution_note: null,
@@ -328,6 +330,24 @@ export async function setTicketDeadline(
     { deadline },
     actor,
     'deadline_change',
+    msg
+  );
+}
+
+export async function setTicketDepartment(
+  ticketId: string,
+  department: string | null,
+  actor: User
+): Promise<{ ticket: Ticket; event: TicketEvent }> {
+  const cleanDept = department?.trim() || null;
+  const msg = cleanDept
+    ? `${actor.name} caktoi departamentin përgjegjës: ${cleanDept}.`
+    : `${actor.name} riktheu departamentin sipas raportuesit.`;
+  return updateTicketFields(
+    ticketId,
+    { department: cleanDept },
+    actor,
+    'assigned',
     msg
   );
 }

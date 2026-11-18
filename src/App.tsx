@@ -28,6 +28,7 @@ import {
   saveEmailSettings,
   sendEmailNotification,
   setTicketDeadline,
+  setTicketDepartment,
   subscribeRealtime,
   transitionTicketStatus,
   upsertDepartment,
@@ -373,6 +374,7 @@ export function App() {
     type: TicketType;
     module: string;
     priority: TicketPriority;
+    department?: string;
   }) => {
     if (!currentUser) return;
     const { ticket, event } = await createTicket(
@@ -569,6 +571,27 @@ export function App() {
     );
     setEvents((prev) => [event, ...prev]);
     showToast('Afati u përditësua.');
+  };
+
+  const handleChangeDepartment = async (
+    ticketId: string,
+    department: string | null
+  ) => {
+    if (!currentUser) return;
+    const { ticket: updated, event } = await setTicketDepartment(
+      ticketId,
+      department,
+      currentUser
+    );
+    setTickets((prev) =>
+      prev.map((t) => (t.id === updated.id ? updated : t))
+    );
+    setEvents((prev) => [event, ...prev]);
+    showToast(
+      updated.department
+        ? `Departamenti i tiketës u ndryshua në "${updated.department}".`
+        : 'Departamenti i tiketës u përditësua.'
+    );
   };
 
   const handleAddComment = async (ticketId: string, message: string) => {
@@ -889,6 +912,7 @@ export function App() {
             currentUser={currentUser}
             visibleTickets={visibleTickets}
             users={users}
+            departments={departments}
             modules={modules}
             filters={filters}
             onFiltersChange={setFilters}
@@ -900,6 +924,7 @@ export function App() {
             onAssignDeveloper={handleAssignDeveloper}
             onOverridePriority={handleOverridePriority}
             onSetDeadline={handleSetDeadline}
+            onChangeDepartment={handleChangeDepartment}
           />
         )}
       </main>
@@ -908,6 +933,9 @@ export function App() {
       <CreateTicketModal
         isOpen={isNewTicketOpen}
         modules={modules}
+        departments={departments}
+        allowDepartmentSelect={currentUser.role === 'Menaxher'}
+        defaultDepartment={currentUser.department}
         onClose={() => setIsNewTicketOpen(false)}
         onSubmit={handleCreateTicket}
       />
@@ -916,6 +944,7 @@ export function App() {
         ticket={selectedTicket}
         currentUser={currentUser}
         users={users}
+        departments={departments}
         events={events}
         onClose={() => setSelectedTicketId(null)}
         onStatusChange={handleStatusChange}
@@ -925,6 +954,7 @@ export function App() {
         onAssignDeveloper={handleAssignDeveloper}
         onOverridePriority={handleOverridePriority}
         onSetDeadline={handleSetDeadline}
+        onChangeDepartment={handleChangeDepartment}
         onAddComment={handleAddComment}
       />
 

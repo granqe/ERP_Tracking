@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { AlertCircle, PlusCircle, X } from 'lucide-react';
 import { TICKET_PRIORITIES, TICKET_TYPES } from '../types';
-import type { ErpModule, TicketPriority, TicketType } from '../types';
+import type {
+  Department,
+  ErpModule,
+  TicketPriority,
+  TicketType,
+} from '../types';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
   modules: ErpModule[];
+  departments?: Department[];
+  allowDepartmentSelect?: boolean;
+  defaultDepartment?: string;
   onClose: () => void;
   onSubmit: (data: {
     title: string;
@@ -13,12 +21,16 @@ interface CreateTicketModalProps {
     type: TicketType;
     module: string;
     priority: TicketPriority;
+    department?: string;
   }) => Promise<void>;
 }
 
 export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   isOpen,
   modules,
+  departments = [],
+  allowDepartmentSelect = false,
+  defaultDepartment = '',
   onClose,
   onSubmit,
 }) => {
@@ -27,6 +39,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [type, setType] = useState<TicketType>('Bug / Gabim Teknik');
   const [moduleName, setModuleName] = useState(
     modules[0]?.name || 'Financa & TVSH'
+  );
+  const [department, setDepartment] = useState(
+    defaultDepartment || departments[0]?.name || ''
   );
   const [priority, setPriority] = useState<TicketPriority>('Mesatar');
   const [submitting, setSubmitting] = useState(false);
@@ -49,11 +64,15 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         type,
         module: moduleName,
         priority,
+        department: allowDepartmentSelect
+          ? department || defaultDepartment || undefined
+          : undefined,
       });
       setTitle('');
       setDescription('');
       setType('Bug / Gabim Teknik');
       setPriority('Mesatar');
+      setDepartment(defaultDepartment || departments[0]?.name || '');
       onClose();
     } catch {
       setError('Ndodhi një gabim gjatë ruajtjes së tiketës. Provoni përsëri.');
@@ -137,6 +156,30 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </select>
             </div>
           </div>
+
+          {allowDepartmentSelect && departments.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Departamenti Përgjegjës
+              </label>
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                {Array.from(
+                  new Set([
+                    ...departments.map((d) => d.name),
+                    ...(department ? [department] : []),
+                  ])
+                ).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">

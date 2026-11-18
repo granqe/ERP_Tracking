@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { TICKET_PRIORITIES } from '../types';
 import type {
+  Department,
   Ticket,
   TicketEvent,
   TicketPriority,
@@ -33,6 +34,7 @@ interface TicketDetailDrawerProps {
   ticket: Ticket | null;
   currentUser: User;
   users: User[];
+  departments: Department[];
   events: TicketEvent[];
   onClose: () => void;
   onStatusChange: (ticket: Ticket, newStatus: TicketStatus) => void;
@@ -42,6 +44,7 @@ interface TicketDetailDrawerProps {
   onAssignDeveloper: (ticketId: string, developerId: string | null) => void;
   onOverridePriority: (ticketId: string, priority: TicketPriority) => void;
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
+  onChangeDepartment: (ticketId: string, department: string | null) => void;
   onAddComment: (ticketId: string, message: string) => Promise<void>;
 }
 
@@ -49,6 +52,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   ticket,
   currentUser,
   users,
+  departments,
   events,
   onClose,
   onStatusChange,
@@ -58,6 +62,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   onAssignDeveloper,
   onOverridePriority,
   onSetDeadline,
+  onChangeDepartment,
   onAddComment,
 }) => {
   const [commentText, setCommentText] = useState('');
@@ -68,6 +73,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   const developers = users.filter((u) => u.role === 'Programer' && u.active);
   const reporter = users.find((u) => u.id === ticket.created_by);
   const assignee = users.find((u) => u.id === ticket.assigned_to);
+  const effectiveDepartment = ticket.department || reporter?.department || '';
   const ticketEvents = events
     .filter((e) => e.ticket_id === ticket.id)
     .sort(
@@ -76,7 +82,11 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
     );
 
   const isStaffOwner =
-    currentUser.role === 'Staf' && ticket.created_by === currentUser.id;
+    currentUser.role === 'Staf' &&
+    (ticket.created_by === currentUser.id ||
+      (effectiveDepartment.trim() !== '' &&
+        (currentUser.department || '').trim().toLowerCase() ===
+          effectiveDepartment.trim().toLowerCase()));
   const isReadyForUat =
     ticket.status === 'Kryer nga Programeri (Gati për Testim)';
   const canDevAct =
@@ -314,6 +324,36 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                   {daysBetween(ticket.updated_at)} ditë pa ndryshim)
                 </span>
               </div>
+            </div>
+
+            <div>
+              <span className="block text-[11px] font-medium text-slate-400">
+                Departamenti Përgjegjës
+              </span>
+              {isPm ? (
+                <select
+                  value={effectiveDepartment}
+                  onChange={(e) =>
+                    onChangeDepartment(ticket.id, e.target.value || null)
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
+                >
+                  {Array.from(
+                    new Set([
+                      ...departments.map((d) => d.name),
+                      ...(effectiveDepartment ? [effectiveDepartment] : []),
+                    ])
+                  ).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="mt-1 inline-block text-sm font-medium text-slate-800">
+                  {effectiveDepartment || '—'}
+                </span>
+              )}
             </div>
 
             {isPm && (

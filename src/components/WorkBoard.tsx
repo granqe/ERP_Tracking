@@ -16,6 +16,7 @@ import {
   TICKET_TYPES,
 } from '../types';
 import type {
+  Department,
   ErpModule,
   Ticket,
   TicketFilters,
@@ -35,6 +36,7 @@ interface WorkBoardProps {
   currentUser: User;
   visibleTickets: Ticket[];
   users: User[];
+  departments: Department[];
   modules: ErpModule[];
   filters: TicketFilters;
   onFiltersChange: (next: TicketFilters) => void;
@@ -46,12 +48,14 @@ interface WorkBoardProps {
   onAssignDeveloper: (ticketId: string, developerId: string | null) => void;
   onOverridePriority: (ticketId: string, priority: TicketPriority) => void;
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
+  onChangeDepartment: (ticketId: string, department: string | null) => void;
 }
 
 export const WorkBoard: React.FC<WorkBoardProps> = ({
   currentUser,
   visibleTickets,
   users,
+  departments,
   modules,
   filters,
   onFiltersChange,
@@ -63,6 +67,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
   onAssignDeveloper,
   onOverridePriority,
   onSetDeadline,
+  onChangeDepartment,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
@@ -119,9 +124,20 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
     });
 
   const renderStaffUatBanner = (ticket: Ticket) => {
+    const reporter = users.find((u) => u.id === ticket.created_by);
+    const effectiveDept = (
+      ticket.department ||
+      reporter?.department ||
+      ''
+    )
+      .trim()
+      .toLowerCase();
+    const isDeptMember =
+      effectiveDept !== '' &&
+      (currentUser.department || '').trim().toLowerCase() === effectiveDept;
     if (
       !isStaff ||
-      ticket.created_by !== currentUser.id ||
+      (ticket.created_by !== currentUser.id && !isDeptMember) ||
       ticket.status !== 'Kryer nga Programeri (Gati për Testim)'
     ) {
       return null;
@@ -554,14 +570,59 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                               <p className="text-xs font-semibold text-slate-900">
                                 {reporter.name}
                               </p>
-                              <p className="text-[11px] text-slate-500">
-                                {reporter.department}
-                              </p>
+                              {isPm ? (
+                                <select
+                                  value={t.department || reporter.department}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) =>
+                                    onChangeDepartment(
+                                      t.id,
+                                      e.target.value || null
+                                    )
+                                  }
+                                  title="Ndrysho departamentin që sheh këtë tiketë"
+                                  className="mt-0.5 max-w-[190px] rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 hover:border-blue-400 focus:border-blue-500 focus:bg-white focus:outline-none"
+                                >
+                                  {Array.from(
+                                    new Set([
+                                      ...departments.map((d) => d.name),
+                                      reporter.department,
+                                      ...(t.department ? [t.department] : []),
+                                    ])
+                                  )
+                                    .filter(Boolean)
+                                    .map((d) => (
+                                      <option key={d} value={d}>
+                                        {d}
+                                      </option>
+                                    ))}
+                                </select>
+                              ) : (
+                                <p className="text-[11px] text-slate-500">
+                                  {t.department || reporter.department}
+                                </p>
+                              )}
                             </div>
                           </div>
+                        ) : isPm ? (
+                          <select
+                            value={t.department || ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              onChangeDepartment(t.id, e.target.value || null)
+                            }
+                            className="max-w-[190px] rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none"
+                          >
+                            <option value="">Pa departament</option>
+                            {departments.map((d) => (
+                              <option key={d.id} value={d.name}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
                           <span className="text-xs text-slate-400 italic">
-                            I panjohur
+                            {t.department || 'I panjohur'}
                           </span>
                         )}
                       </td>
