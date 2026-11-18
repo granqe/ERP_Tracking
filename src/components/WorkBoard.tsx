@@ -219,9 +219,9 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
       </div>
 
       {/* Filters Bar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative flex-1 min-w-[220px]">
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 sm:gap-2.5">
+          <div className="relative sm:col-span-2 lg:flex-1 lg:min-w-[240px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -239,7 +239,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             onChange={(e) =>
               onFiltersChange({ ...filters, module: e.target.value })
             }
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+            className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
           >
             <option value="">Të gjitha Modulet</option>
             {modules.map((m) => (
@@ -254,7 +254,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             onChange={(e) =>
               onFiltersChange({ ...filters, status: e.target.value })
             }
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+            className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
           >
             <option value="">Të gjitha Statuset</option>
             {TICKET_STATUSES.map((s) => (
@@ -269,7 +269,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             onChange={(e) =>
               onFiltersChange({ ...filters, type: e.target.value })
             }
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+            className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
           >
             <option value="">Të gjitha Llojet</option>
             {TICKET_TYPES.map((t) => (
@@ -284,7 +284,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             onChange={(e) =>
               onFiltersChange({ ...filters, priority: e.target.value })
             }
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+            className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
           >
             <option value="">Të gjitha Prioritetet</option>
             {TICKET_PRIORITIES.map((p) => (
@@ -301,7 +301,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                 onChange={(e) =>
                   onFiltersChange({ ...filters, reporterId: e.target.value })
                 }
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+                className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Të gjithë Raportuesit</option>
                 {users
@@ -318,7 +318,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                 onChange={(e) =>
                   onFiltersChange({ ...filters, developerId: e.target.value })
                 }
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+                className="w-full lg:w-auto rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Të gjithë Programerët</option>
                 <option value="UNASSIGNED">Pa caktuar</option>
@@ -335,7 +335,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             <button
               type="button"
               onClick={clearFilters}
-              className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+              className="flex items-center justify-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 sm:col-span-2 lg:col-span-1"
             >
               <X className="h-3.5 w-3.5" />
               <span>Pastro</span>
@@ -345,7 +345,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
 
         <div className="flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-1.5">
-            <Filter className="h-3.5 w-3.5" />
+            <Filter className="h-3.5 w-3.5 shrink-0" />
             <span>
               Po shfaqen <strong>{filteredTickets.length}</strong> nga{' '}
               <strong>{visibleTickets.length}</strong> tiketa të dukshme për ju
@@ -366,7 +366,140 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
         </div>
       ) : viewMode === 'list' ? (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card List */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredTickets.map((t) => {
+              const reporter = users.find((u) => u.id === t.created_by);
+              const dev = users.find((u) => u.id === t.assigned_to);
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => onOpenTicket(t)}
+                  className="p-3.5 space-y-2.5 cursor-pointer active:bg-slate-50 transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white shrink-0">
+                        {t.code}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${getPriorityBadgeClass(
+                          t.priority
+                        )}`}
+                      >
+                        {t.priority}
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-semibold truncate max-w-[55%] ${getStatusBadgeClass(
+                        t.status
+                      )}`}
+                    >
+                      {t.status}
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 leading-snug">
+                      {t.title}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-700">{t.module}</span>
+                      <span>•</span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getTypeBadgeClass(
+                          t.type
+                        )}`}
+                      >
+                        {t.type}
+                      </span>
+                    </div>
+                  </div>
+
+                  {t.blocker_reason && (
+                    <p className="flex items-center gap-1 text-xs text-rose-700 font-medium bg-rose-50 rounded-lg px-2.5 py-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      <span className="line-clamp-2">{t.blocker_reason}</span>
+                    </p>
+                  )}
+
+                  {renderStaffUatBanner(t)}
+
+                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {reporter ? (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold text-white"
+                            style={{ backgroundColor: reporter.avatar_color }}
+                          >
+                            {getInitials(reporter.name)}
+                          </span>
+                          <span className="truncate font-medium text-slate-700">
+                            {reporter.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="italic text-slate-400">I panjohur</span>
+                      )}
+                      {dev && (
+                        <>
+                          <span className="text-slate-300">→</span>
+                          <span className="truncate text-slate-600">{dev.name}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {t.deadline && (
+                      <span className="text-[11px] text-slate-500 shrink-0">
+                        Afati: {formatAlbanianDate(t.deadline)}
+                      </span>
+                    )}
+                  </div>
+
+                  {(isDev || isPm) &&
+                    t.status !== 'Mbyllur (Konfirmuar)' &&
+                    t.status !== 'Kryer nga Programeri (Gati për Testim)' && (
+                      <div
+                        className="flex flex-wrap items-center gap-1.5 pt-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t.status === 'Në Pritje (Backlog)' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onStatusChange(t, 'Në Punë (In Progress)')
+                            }
+                            className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700"
+                          >
+                            Fillo
+                          </button>
+                        )}
+                        {t.status !== 'Bllokuar (Blocked)' && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenBlockModal(t)}
+                            className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                          >
+                            Bllokuar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onOpenResolveModal(t)}
+                          className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700"
+                        >
+                          Konfirmo Kryerjen
+                        </button>
+                      </div>
+                    )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -604,7 +737,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
         </div>
       ) : (
         /* KANBAN VIEW */
-        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory custom-scrollbar">
           {TICKET_STATUSES.map((statusCol) => {
             const colTickets = filteredTickets.filter(
               (t) => t.status === statusCol
@@ -612,7 +745,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             return (
               <div
                 key={statusCol}
-                className="w-80 shrink-0 rounded-2xl border border-slate-200 bg-slate-100/80 p-3 flex flex-col max-h-[75vh]"
+                className="w-[84vw] sm:w-80 shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-100/80 p-3 flex flex-col max-h-[75vh]"
               >
                 <div className="flex items-center justify-between gap-2 px-1 pb-3">
                   <span

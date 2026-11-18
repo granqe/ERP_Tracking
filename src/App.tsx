@@ -436,7 +436,7 @@ export function App() {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-10 xl:px-14 py-4 sm:py-6">
         {currentUser.role === 'Menaxher' && activeTab === 'pm_overview' ? (
           <PmDashboard
             tickets={tickets}

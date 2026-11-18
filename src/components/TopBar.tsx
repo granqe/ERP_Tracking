@@ -57,10 +57,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-3">
+      <div className="mx-auto max-w-[1600px] px-3 sm:px-6 lg:px-10 xl:px-14">
+        <div className="flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3">
           {/* Brand + Nav */}
-          <div className="flex min-w-0 items-center gap-5">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-5">
             <div className="flex shrink-0 items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
                 <ShieldCheck className="h-5 w-5 text-blue-400" />
@@ -114,11 +114,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
 
           {/* Right Actions: New Ticket + User Profile + Logout */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={onOpenNewTicket}
-              className={`${baseBtn} bg-blue-600 font-semibold text-white shadow-xs hover:bg-blue-700`}
+              className={`${baseBtn} bg-blue-600 px-2.5 sm:px-3 font-semibold text-white shadow-xs hover:bg-blue-700`}
             >
               <Plus className={iconCls} />
               <span className="hidden sm:inline">Raporto Problem</span>
@@ -129,7 +129,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className={`${baseBtn} gap-2 border border-slate-200 bg-white pl-1 pr-2 text-left hover:border-slate-300 hover:bg-slate-50`}
+                className={`${baseBtn} gap-1.5 sm:gap-2 border border-slate-200 bg-white pl-1 pr-2 text-left hover:border-slate-300 hover:bg-slate-50`}
               >
                 <span
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
@@ -151,7 +151,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
+                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
                   <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
                     <div
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
