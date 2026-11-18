@@ -173,6 +173,12 @@ INSERT INTO public.departments (name) VALUES
   ('Teknologji (IT)')
 ON CONFLICT (name) DO NOTHING;
 
+INSERT INTO public.departments (name)
+SELECT DISTINCT trim(department)
+FROM public.users
+WHERE department IS NOT NULL AND trim(department) <> ''
+ON CONFLICT (name) DO NOTHING;
+
 INSERT INTO public.erp_modules (name, description, rollout_phase, is_default) VALUES
   ('Financa & TVSH', 'Llogaritja e TVSH-së, bilancet dhe mbyllja mujore', 3, true),
   ('Mirëmbajtja / Support', 'Menaxhimi i kontratave dhe tiketave të mirëmbajtjes', 2, true),
