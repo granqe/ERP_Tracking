@@ -45,6 +45,7 @@ interface TeamAndModulesModalProps {
     },
     options?: { sendCredentialsEmail?: boolean }
   ) => Promise<void>;
+  onSendUserCredentials: (user: User) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onSaveModule: (
     mod: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
@@ -87,6 +88,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   emailSettings,
   onClose,
   onSaveUser,
+  onSendUserCredentials,
   onDeleteUser,
   onSaveModule,
   onSaveDepartment,
@@ -100,6 +102,10 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmSendCredsId, setConfirmSendCredsId] = useState<string | null>(
+    null
+  );
+  const [sendingCredsId, setSendingCredsId] = useState<string | null>(null);
 
   // User form state
   const [editingUserId, setEditingUserId] = useState<string | undefined>();
@@ -735,6 +741,10 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                   {filteredUsers.map((u) => {
                     const isSelf = u.id === currentUserId;
                     const isConfirmingDelete = confirmDeleteId === u.id;
+                    const isConfirmingSendCreds = confirmSendCredsId === u.id;
+                    const hasEmail = Boolean(
+                      u.email && u.email.trim().includes('@')
+                    );
                     return (
                       <div
                         key={u.id}
@@ -782,6 +792,61 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {isConfirmingSendCreds ? (
+                            <div className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-1.5 py-1">
+                              <span className="hidden md:inline text-[10px] font-medium text-blue-800 px-1">
+                                Fjalëkalim i ri?
+                              </span>
+                              <button
+                                type="button"
+                                disabled={sendingCredsId === u.id}
+                                onClick={async () => {
+                                  setSendingCredsId(u.id);
+                                  try {
+                                    await onSendUserCredentials(u);
+                                    setConfirmSendCredsId(null);
+                                  } finally {
+                                    setSendingCredsId(null);
+                                  }
+                                }}
+                                className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                {sendingCredsId === u.id
+                                  ? 'Duke dërguar...'
+                                  : 'Dërgo'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={sendingCredsId === u.id}
+                                onClick={() => setConfirmSendCredsId(null)}
+                                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                              >
+                                Jo
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!hasEmail}
+                              onClick={() => {
+                                setConfirmSendCredsId(u.id);
+                                setConfirmDeleteId(null);
+                              }}
+                              className={`rounded-lg border p-1.5 transition ${
+                                hasEmail
+                                  ? 'border-blue-200 bg-blue-50/70 text-blue-600 hover:bg-blue-100 hover:text-blue-800'
+                                  : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                              }`}
+                              title={
+                                hasEmail
+                                  ? `Dërgo kredencialet me email (${u.email})`
+                                  : 'Shtoni email-in te Ndrysho për të dërguar kredencialet'
+                              }
+                            >
+                              <Mail className="h-4 w-4" />
+                            </button>
+                          )}
+
                           {!isSelf && (
                             <button
                               type="button"
