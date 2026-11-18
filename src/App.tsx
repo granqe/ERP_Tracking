@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { CreateTicketModal } from './components/CreateTicketModal';
 import {
@@ -42,20 +42,21 @@ import type {
   User,
 } from './types';
 import { getVisibleTicketsForUser } from './utils/formatters';
+import {
+  buildUrlFromState,
+  EMPTY_TICKET_FILTERS,
+  parseUrlState,
+} from './utils/urlSync';
 
 const SESSION_USER_KEY = 'erp_tracker_session_user_id';
-
-const EMPTY_FILTERS: TicketFilters = {
-  search: '',
-  module: '',
-  status: '',
-  type: '',
-  priority: '',
-  reporterId: '',
-  developerId: '',
-};
+const EMPTY_FILTERS = EMPTY_TICKET_FILTERS;
 
 export function App() {
+  const initialUrlState = useMemo(
+    () => parseUrlState(window.location.pathname, window.location.search),
+    []
+  );
+
   const [loading, setLoading] = useState(true);
   const [dbHealth, setDbHealth] = useState<DbHealthStatus>({
     configured: false,
@@ -70,13 +71,21 @@ export function App() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(() =>
     localStorage.getItem(SESSION_USER_KEY)
   );
-  const [activeTab, setActiveTab] = useState<ActiveTab>('pm_overview');
-  const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialUrlState.tab);
+  const [filters, setFilters] = useState<TicketFilters>(
+    initialUrlState.filters
+  );
 
   // Modals & Drawers
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(
+    initialUrlState.teamModalOpen
+  );
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [pendingTicketRef, setPendingTicketRef] = useState<string | null>(
+    initialUrlState.ticketRef
+  );
+  const isPoppingHistoryRef = useRef(false);
   const [resolveModalTicket, setResolveModalTicket] = useState<Ticket | null>(
     null
   );
@@ -185,6 +194,84 @@ export function App() {
     () => visibleTickets.find((t) => t.id === selectedTicketId) || null,
     [visibleTickets, selectedTicketId]
   );
+
+  // Resolve pending ticket from URL once tickets are loaded
+  useEffect(() => {
+    if (!pendingTicketRef || visibleTickets.length === 0) return;
+    const match = visibleTickets.find(
+      (t) => t.code === pendingTicketRef || t.id === pendingTicketRef
+    );
+    if (match) {
+      setSelectedTicketId(match.id);
+    }
+    setPendingTicketRef(null);
+  }, [pendingTicketRef, visibleTickets]);
+
+  // Listen to browser Back / Forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      isPoppingHistoryRef.current = true;
+      const parsed = parseUrlState(
+        window.location.pathname,
+        window.location.search
+      );
+      setActiveTab(parsed.tab);
+      setIsTeamModalOpen(parsed.teamModalOpen);
+      setFilters(parsed.filters);
+      if (parsed.ticketRef) {
+        const match = visibleTickets.find(
+          (t) => t.code === parsed.ticketRef || t.id === parsed.ticketRef
+        );
+        setSelectedTicketId(match ? match.id : null);
+      } else {
+        setSelectedTicketId(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [visibleTickets]);
+
+  // Keep browser URL in sync with active module/tab/filters/ticket
+  useEffect(() => {
+    if (loading || pendingTicketRef) return;
+
+    const targetUrl = buildUrlFromState({
+      currentUser,
+      activeTab,
+      isTeamModalOpen,
+      filters,
+      selectedTicket,
+    });
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (isPoppingHistoryRef.current) {
+      isPoppingHistoryRef.current = false;
+      if (currentUrl !== targetUrl) {
+        window.history.replaceState(null, '', targetUrl);
+      }
+      return;
+    }
+
+    if (currentUrl !== targetUrl) {
+      const samePath =
+        window.location.pathname === targetUrl.split('?')[0];
+      const onlySearchChanged =
+        samePath && Boolean(filters.search);
+      if (onlySearchChanged || currentUrl === '/') {
+        window.history.replaceState(null, '', targetUrl);
+      } else {
+        window.history.pushState(null, '', targetUrl);
+      }
+    }
+  }, [
+    loading,
+    pendingTicketRef,
+    currentUser,
+    activeTab,
+    isTeamModalOpen,
+    filters,
+    selectedTicket,
+  ]);
 
   // Actions
   const handleCreateTicket = async (input: {
