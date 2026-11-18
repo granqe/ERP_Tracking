@@ -1,6 +1,5 @@
 import type { ActiveTab } from '../components/TopBar';
-import type { TicketFilters } from '../components/WorkBoard';
-import type { Ticket, User } from '../types';
+import type { Ticket, TicketFilters, User } from '../types';
 
 export interface ParsedUrlState {
   tab: ActiveTab;
