@@ -19,8 +19,6 @@ export type TicketStatus =
   | 'Kryer nga Programeri (Gati për Testim)'
   | 'Mbyllur (Konfirmuar)';
 
-export type PhaseStatus = 'Përfunduar' | 'Aktiv' | 'Bllokuar' | 'Në Pritje';
-
 export type EventType =
   | 'created'
   | 'status_change'
@@ -71,17 +69,9 @@ export interface ErpModule {
   id: string;
   name: string;
   description?: string;
-  rollout_phase: number;
+  rollout_phase?: number;
   is_default: boolean;
   created_at: string;
-}
-
-export interface RolloutPhase {
-  id: number;
-  title: string;
-  description: string;
-  status: PhaseStatus;
-  progress: number;
 }
 
 export interface Ticket {

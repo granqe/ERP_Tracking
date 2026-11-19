@@ -6,8 +6,6 @@ import type {
   EmailSettings,
   ErpModule,
   EventType,
-  PhaseStatus,
-  RolloutPhase,
   Ticket,
   TicketEvent,
   TicketPriority,
@@ -20,7 +18,6 @@ export interface AppDataset {
   users: User[];
   departments: Department[];
   modules: ErpModule[];
-  phases: RolloutPhase[];
   tickets: Ticket[];
   events: TicketEvent[];
 }
@@ -48,28 +45,22 @@ function generateId(): string {
 export async function loadAllData(): Promise<AppDataset> {
   const client = requireSupabase();
 
-  const [usersRes, deptRes, modRes, phaseRes, ticketRes, eventRes] =
-    await Promise.all([
-      client.from('users').select('*').order('created_at', { ascending: true }),
-      client.from('departments').select('*').order('name', { ascending: true }),
-      client
-        .from('erp_modules')
-        .select('*')
-        .order('rollout_phase', { ascending: true }),
-      client.from('rollout_phases').select('*').order('id', { ascending: true }),
-      client
-        .from('tickets')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      client
-        .from('ticket_events')
-        .select('*')
-        .order('created_at', { ascending: false }),
-    ]);
+  const [usersRes, deptRes, modRes, ticketRes, eventRes] = await Promise.all([
+    client.from('users').select('*').order('created_at', { ascending: true }),
+    client.from('departments').select('*').order('name', { ascending: true }),
+    client.from('erp_modules').select('*').order('name', { ascending: true }),
+    client
+      .from('tickets')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    client
+      .from('ticket_events')
+      .select('*')
+      .order('created_at', { ascending: false }),
+  ]);
 
   if (usersRes.error) throw usersRes.error;
   if (modRes.error) throw modRes.error;
-  if (phaseRes.error) throw phaseRes.error;
   if (ticketRes.error) throw ticketRes.error;
   if (eventRes.error) throw eventRes.error;
 
@@ -97,7 +88,6 @@ export async function loadAllData(): Promise<AppDataset> {
     users: loadedUsers,
     departments: loadedDepartments,
     modules: (modRes.data as ErpModule[]) ?? [],
-    phases: (phaseRes.data as RolloutPhase[]) ?? [],
     tickets: (ticketRes.data as Ticket[]) ?? [],
     events: (eventRes.data as TicketEvent[]) ?? [],
   };
@@ -115,7 +105,6 @@ export function subscribeRealtime(onChange: () => void): () => void {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'erp_modules' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'rollout_phases' }, onChange)
     .subscribe();
 
   return () => {
@@ -412,46 +401,58 @@ export async function deleteUser(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function upsertErpModule(
-  modInput: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
-    id?: string;
-    is_default?: boolean;
-  }
-): Promise<ErpModule> {
+export async function upsertErpModule(modInput: {
+  id?: string;
+  name: string;
+  description?: string;
+  previousName?: string;
+  is_default?: boolean;
+}): Promise<ErpModule> {
   const client = requireSupabase();
+  const cleanName = modInput.name.trim();
+  const cleanDesc = modInput.description?.trim() || '';
+
+  if (modInput.id) {
+    const { data, error } = await client
+      .from('erp_modules')
+      .update({ name: cleanName, description: cleanDesc })
+      .eq('id', modInput.id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    if (modInput.previousName && modInput.previousName !== cleanName) {
+      await client
+        .from('tickets')
+        .update({ module: cleanName })
+        .eq('module', modInput.previousName);
+    }
+    return data as ErpModule;
+  }
+
   const nowIso = new Date().toISOString();
-  const mod: ErpModule = {
-    id: modInput.id ?? generateId(),
-    name: modInput.name.trim(),
-    description: modInput.description?.trim() || '',
-    rollout_phase: modInput.rollout_phase,
+  const mod = {
+    id: generateId(),
+    name: cleanName,
+    description: cleanDesc,
+    rollout_phase: 1,
     is_default: modInput.is_default ?? false,
     created_at: nowIso,
   };
 
   const { data, error } = await client
     .from('erp_modules')
-    .upsert(mod)
+    .insert(mod)
     .select()
     .single();
   if (error) throw error;
   return data as ErpModule;
 }
 
-export async function updateRolloutPhase(
-  phaseId: number,
-  status: PhaseStatus,
-  progress: number
-): Promise<RolloutPhase> {
+export async function deleteErpModule(modId: string): Promise<void> {
   const client = requireSupabase();
-  const { data, error } = await client
-    .from('rollout_phases')
-    .update({ status, progress })
-    .eq('id', phaseId)
-    .select()
-    .single();
+  const { error } = await client.from('erp_modules').delete().eq('id', modId);
   if (error) throw error;
-  return data as RolloutPhase;
 }
 
 export async function upsertDepartment(deptInput: {

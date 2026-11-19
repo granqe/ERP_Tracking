@@ -21,6 +21,7 @@ import {
   createTicket,
   DEFAULT_EMAIL_SETTINGS,
   deleteDepartment,
+  deleteErpModule,
   deleteUser,
   loadAllData,
   loadEmailSettings,
@@ -39,7 +40,6 @@ import type {
   Department,
   EmailSettings,
   ErpModule,
-  RolloutPhase,
   Ticket,
   TicketEvent,
   TicketFilters,
@@ -78,7 +78,6 @@ export function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [modules, setModules] = useState<ErpModule[]>([]);
-  const [phases, setPhases] = useState<RolloutPhase[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(
@@ -132,7 +131,6 @@ export function App() {
       setUsers(data.users);
       setDepartments(data.departments);
       setModules(data.modules);
-      setPhases(data.phases);
       setTickets(data.tickets);
       setEvents(data.events);
       setEmailSettings(loadedEmail);
@@ -786,20 +784,35 @@ export function App() {
     showToast('Përdoruesi u fshi nga sistemi.');
   };
 
-  const handleSaveModule = async (
-    modInput: Omit<ErpModule, 'id' | 'created_at' | 'is_default'> & {
-      id?: string;
-      is_default?: boolean;
-    }
-  ) => {
+  const handleSaveModule = async (modInput: {
+    id?: string;
+    name: string;
+    description?: string;
+    previousName?: string;
+    is_default?: boolean;
+  }) => {
     const saved = await upsertErpModule(modInput);
     setModules((prev) => {
       const exists = prev.some((m) => m.id === saved.id);
-      return exists
+      const next = exists
         ? prev.map((m) => (m.id === saved.id ? saved : m))
         : [...prev, saved];
+      return next.sort((a, b) => a.name.localeCompare(b.name));
     });
+    if (modInput.previousName && modInput.previousName !== saved.name) {
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.module === modInput.previousName ? { ...t, module: saved.name } : t
+        )
+      );
+    }
     showToast(`Moduli "${saved.name}" u ruajt me sukses.`);
+  };
+
+  const handleDeleteModule = async (modId: string) => {
+    await deleteErpModule(modId);
+    setModules((prev) => prev.filter((m) => m.id !== modId));
+    showToast('Moduli u fshi nga sistemi.');
   };
 
   const handleSaveDepartment = async (deptInput: {
@@ -983,13 +996,13 @@ export function App() {
           users={users}
           departments={departments}
           modules={modules}
-          phases={phases}
           emailSettings={emailSettings}
           onClose={() => setIsTeamModalOpen(false)}
           onSaveUser={handleSaveUser}
           onSendUserCredentials={handleSendUserCredentials}
           onDeleteUser={handleDeleteUser}
           onSaveModule={handleSaveModule}
+          onDeleteModule={handleDeleteModule}
           onSaveDepartment={handleSaveDepartment}
           onDeleteDepartment={handleDeleteDepartment}
           onSaveEmailSettings={handleSaveEmailSettings}
