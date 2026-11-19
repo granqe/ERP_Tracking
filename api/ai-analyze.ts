@@ -85,7 +85,7 @@ async function callGeminiEndpoint(
   url: string,
   systemText: string,
   userText: string,
-  timeoutMs = 22000
+  timeoutMs = 28000
 ): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -107,8 +107,10 @@ async function callGeminiEndpoint(
           },
         ],
         generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
+          thinkingConfig: {
+            thinkingLevel: 'LOW',
+          },
         },
       }),
     });
