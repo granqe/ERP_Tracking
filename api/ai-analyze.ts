@@ -79,30 +79,51 @@ function buildSystemInstruction(mode: AnalyzePayload['mode'], userRole: string) 
   ].join('\n');
 }
 
+export const maxDuration = 60;
+
 async function callGeminiEndpoint(
   url: string,
   systemText: string,
-  userText: string
+  userText: string,
+  timeoutMs = 22000
 ): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: systemText }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userText }],
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemText }],
         },
-      ],
-      generationConfig: {
-        temperature: 0.35,
-        maxOutputTokens: 4096,
-      },
-    }),
-  });
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userText }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        },
+      }),
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return {
+        ok: false,
+        status: 504,
+        error: 'Kërkesa ndaj Gemini API zgjati shumë (timeout).',
+      };
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const data = (await response.json().catch(() => ({}))) as GeminiResponse;
   if (!response.ok) {
@@ -218,12 +239,10 @@ export default async function handler(
     ? [
         `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
         `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
-        `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
       ]
     : [
         `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
         `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
       ];
 
   let lastError = 'Nuk u arrit komunikimi me Gemini API.';
