@@ -235,32 +235,61 @@ export default async function handler(
     .join('\n');
 
   const primaryModel = (process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+  const models = Array.from(
+    new Set([primaryModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])
+  );
+
   const isVertexExpressKey = apiKey.startsWith('AQ.');
   const encodedKey = encodeURIComponent(apiKey);
-  const endpoints = isVertexExpressKey
-    ? [
-        `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
-      ]
-    : [
-        `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
-        `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
-      ];
+  const buildUrl = (host: 'vertex' | 'studio', model: string) =>
+    host === 'vertex'
+      ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodedKey}`
+      : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodedKey}`;
 
+  const hosts: Array<'vertex' | 'studio'> = isVertexExpressKey
+    ? ['vertex', 'studio']
+    : ['studio', 'vertex'];
+
+  let activeHostIndex = 0;
   let lastError = 'Nuk u arrit komunikimi me Gemini API.';
-  for (const url of endpoints) {
-    try {
-      const result = await callGeminiEndpoint(url, systemText, userPrompt);
-      if (result.ok && result.text) {
-        res.status(200).json({ ok: true, analysis: result.text });
-        return;
+
+  for (const model of models) {
+    let triedSecondaryHost = false;
+    while (activeHostIndex < hosts.length) {
+      const host = hosts[activeHostIndex];
+      try {
+        const result = await callGeminiEndpoint(
+          buildUrl(host, model),
+          systemText,
+          userPrompt,
+          16000
+        );
+        if (result.ok && result.text) {
+          res.status(200).json({ ok: true, analysis: result.text, model });
+          return;
+        }
+        if (result.error) {
+          lastError = result.error;
+        }
+        // Nëse çelësi refuzohet nga ky host (401/403), provo host-in tjetër
+        if (
+          (result.status === 401 || result.status === 403) &&
+          !triedSecondaryHost &&
+          activeHostIndex + 1 < hosts.length
+        ) {
+          activeHostIndex += 1;
+          triedSecondaryHost = true;
+          continue;
+        }
+        // Për 503 / 429 / 504 / 404 (ngarkesë e lartë ose model i padisponueshëm), kalo te modeli tjetër fallback
+        break;
+      } catch (err) {
+        lastError =
+          err instanceof Error
+            ? err.message
+            : 'Gabim rrjeti gjatë thirrjes së AI.';
+        break;
       }
-      if (result.error) {
-        lastError = result.error;
-      }
-    } catch (err) {
-      lastError =
-        err instanceof Error ? err.message : 'Gabim rrjeti gjatë thirrjes së AI.';
     }
   }
 
