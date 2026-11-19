@@ -45,7 +45,7 @@ interface AnalyzePayload {
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
-      parts?: Array<{ text?: string }>;
+      parts?: Array<{ text?: string; thought?: boolean }>;
     };
   }>;
   error?: {
@@ -99,7 +99,7 @@ async function callGeminiEndpoint(
       ],
       generationConfig: {
         temperature: 0.35,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
       },
     }),
   });
@@ -113,11 +113,12 @@ async function callGeminiEndpoint(
     };
   }
 
-  const text =
-    data.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text || '')
-      .join('')
-      .trim() || '';
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const visibleParts = parts.filter((p) => !p.thought && p.text);
+  const text = (visibleParts.length > 0 ? visibleParts : parts)
+    .map((p) => p.text || '')
+    .join('')
+    .trim();
 
   if (!text) {
     return { ok: false, error: 'Gemini ktheu përgjigje boshe.' };
@@ -210,18 +211,19 @@ export default async function handler(
     .filter(Boolean)
     .join('\n');
 
+  const primaryModel = (process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
   const isVertexExpressKey = apiKey.startsWith('AQ.');
   const encodedKey = encodeURIComponent(apiKey);
   const endpoints = isVertexExpressKey
     ? [
+        `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
         `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
-        `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.0-flash:generateContent?key=${encodedKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
       ]
     : [
+        `https://generativelanguage.googleapis.com/v1beta/models/${primaryModel}:generateContent?key=${encodedKey}`,
+        `https://aiplatform.googleapis.com/v1/publishers/google/models/${primaryModel}:generateContent?key=${encodedKey}`,
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodedKey}`,
-        `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${encodedKey}`,
       ];
 
   let lastError = 'Nuk u arrit komunikimi me Gemini API.';
