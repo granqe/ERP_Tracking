@@ -11,6 +11,7 @@ import {
   LogOut,
   Plus,
   ShieldCheck,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react';
@@ -22,7 +23,7 @@ import {
 } from '../utils/formatters';
 import type { AppNotification } from '../utils/notifications';
 
-export type ActiveTab = 'pm_overview' | 'work_board';
+export type ActiveTab = 'pm_overview' | 'work_board' | 'ai_insights';
 
 interface TopBarProps {
   currentUser: User;
@@ -138,6 +139,19 @@ export const TopBar: React.FC<TopBarProps> = ({
                     : 'Tabela e Punës'}
                 </span>
               </button>
+
+              {(currentUser.role === 'Menaxher' ||
+                currentUser.role === 'Programer') && (
+                <button
+                  type="button"
+                  onClick={() => onTabChange('ai_insights')}
+                  className={`${tabBtn(activeTab === 'ai_insights')}`}
+                  title="Analiza AI"
+                >
+                  <Sparkles className={iconCls} />
+                  <span className="hidden sm:inline">Analiza AI</span>
+                </button>
+              )}
 
               {currentUser.role === 'Menaxher' && (
                 <button

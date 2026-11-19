@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { AiInsightsPanel } from './components/AiInsightsPanel';
 import { CreateTicketModal } from './components/CreateTicketModal';
 import {
   BlockTicketModal,
@@ -168,6 +169,8 @@ export function App() {
   useEffect(() => {
     if (!currentUser) return;
     if (currentUser.role !== 'Menaxher' && activeTab === 'pm_overview') {
+      setActiveTab('work_board');
+    } else if (currentUser.role === 'Staf' && activeTab === 'ai_insights') {
       setActiveTab('work_board');
     }
   }, [currentUser, activeTab]);
@@ -945,6 +948,18 @@ export function App() {
               setFilters({ ...EMPTY_FILTERS, module: moduleName });
               setActiveTab('work_board');
             }}
+          />
+        ) : (currentUser.role === 'Menaxher' ||
+            currentUser.role === 'Programer') &&
+          activeTab === 'ai_insights' ? (
+          <AiInsightsPanel
+            currentUser={currentUser}
+            tickets={
+              currentUser.role === 'Menaxher' ? tickets : visibleTickets
+            }
+            users={users}
+            modules={modules}
+            onOpenTicket={(t) => setSelectedTicketId(t.id)}
           />
         ) : (
           <WorkBoard

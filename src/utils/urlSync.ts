@@ -30,6 +30,8 @@ export function parseUrlState(
 
   if (path === '/tabela') {
     tab = 'work_board';
+  } else if (path === '/analiza-ai') {
+    tab = 'ai_insights';
   } else if (path === '/perdoruesit-modulet') {
     tab = 'pm_overview';
     teamModalOpen = true;
@@ -68,12 +70,16 @@ export function buildUrlFromState(options: {
   }
 
   const isPm = currentUser.role === 'Menaxher';
+  const canUseAi =
+    currentUser.role === 'Menaxher' || currentUser.role === 'Programer';
   let path = '/tabela';
 
   if (isPm && isTeamModalOpen) {
     path = '/perdoruesit-modulet';
   } else if (isPm && activeTab === 'pm_overview') {
     path = '/menaxher';
+  } else if (canUseAi && activeTab === 'ai_insights') {
+    path = '/analiza-ai';
   } else {
     path = '/tabela';
   }
