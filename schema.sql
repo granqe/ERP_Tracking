@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS public.tickets (
     'Bug / Gabim Teknik',
     'Kërkesë Shtesë (Feature)',
     'Bllokim Procesi (Blocker)',
-    'Migrim të Dhënash'
+    'Migrim të Dhënash',
+    'Tjetër'
   )),
   module TEXT NOT NULL,
   priority TEXT NOT NULL CHECK (priority IN (

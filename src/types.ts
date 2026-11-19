@@ -4,7 +4,8 @@ export type TicketType =
   | 'Bug / Gabim Teknik'
   | 'Kërkesë Shtesë (Feature)'
   | 'Bllokim Procesi (Blocker)'
-  | 'Migrim të Dhënash';
+  | 'Migrim të Dhënash'
+  | 'Tjetër';
 
 export type TicketPriority =
   | 'I Ulët'
@@ -120,6 +121,7 @@ export const TICKET_TYPES: TicketType[] = [
   'Kërkesë Shtesë (Feature)',
   'Bllokim Procesi (Blocker)',
   'Migrim të Dhënash',
+  'Tjetër',
 ];
 
 export const TICKET_PRIORITIES: TicketPriority[] = [

@@ -3,6 +3,7 @@ import {
   Boxes,
   Building2,
   CheckCircle2,
+  ChevronDown,
   Edit3,
   Eye,
   EyeOff,
@@ -149,6 +150,7 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
   const [confirmDeleteDeptId, setConfirmDeleteDeptId] = useState<string | null>(
     null
   );
+  const [expandedDeptId, setExpandedDeptId] = useState<string | null>(null);
 
   // Email settings state
   const [emailEnabled, setEmailEnabled] = useState(emailSettings.enabled);
@@ -1182,69 +1184,148 @@ export const TeamAndModulesModal: React.FC<TeamAndModulesModalProps> = ({
               {/* Departments List */}
               <div className="lg:col-span-7 space-y-2">
                 {departments.map((d) => {
-                  const userCount = users.filter(
+                  const deptUsers = users.filter(
                     (u) => u.department === d.name
-                  ).length;
+                  );
+                  const userCount = deptUsers.length;
                   const isFallback = d.id.startsWith('fallback-');
+                  const isExpanded = expandedDeptId === d.id;
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5"
+                      className="rounded-xl border border-slate-200 bg-white overflow-hidden"
                     >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {d.name}
-                          </p>
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                            {userCount} përdorues
-                          </span>
+                      <div className="flex items-center justify-between gap-3 p-3.5">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {d.name}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedDeptId(isExpanded ? null : d.id)
+                              }
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition ${
+                                isExpanded
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700'
+                              }`}
+                              title="Kliko për të parë punonjësit e këtij departamenti"
+                            >
+                              <span>{userCount} përdorues</span>
+                              <ChevronDown
+                                className={`h-3 w-3 transition-transform ${
+                                  isExpanded ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleEditDept(d)}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                            title="Ndrysho"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+
+                          {!isFallback &&
+                            (confirmDeleteDeptId === d.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await onDeleteDepartment(d.id);
+                                    setConfirmDeleteDeptId(null);
+                                    if (editingDeptId === d.id) resetDeptForm();
+                                  }}
+                                  className="rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700"
+                                >
+                                  Konfirmo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteDeptId(null)}
+                                  className="rounded-lg border border-slate-200 px-2 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                                >
+                                  Jo
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteDeptId(d.id)}
+                                className="rounded-lg border border-slate-200 p-2 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                                title="Fshi departamentin"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            ))}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleEditDept(d)}
-                          className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                          title="Ndrysho"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-
-                        {!isFallback &&
-                          (confirmDeleteDeptId === d.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  await onDeleteDepartment(d.id);
-                                  setConfirmDeleteDeptId(null);
-                                  if (editingDeptId === d.id) resetDeptForm();
-                                }}
-                                className="rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700"
-                              >
-                                Konfirmo
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteDeptId(null)}
-                                className="rounded-lg border border-slate-200 px-2 py-1.5 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
-                              >
-                                Jo
-                              </button>
-                            </div>
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 bg-slate-50/70 px-3.5 py-2.5 space-y-1.5">
+                          {deptUsers.length === 0 ? (
+                            <p className="text-xs text-slate-500 italic py-1">
+                              Nuk ka punonjës të regjistruar në këtë departament.
+                            </p>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteDeptId(d.id)}
-                              className="rounded-lg border border-slate-200 p-2 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
-                              title="Fshi departamentin"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ))}
-                      </div>
+                            deptUsers.map((u) => (
+                              <div
+                                key={u.id}
+                                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-2.5 py-2"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span
+                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
+                                    style={{ backgroundColor: u.avatar_color }}
+                                  >
+                                    {getInitials(u.name)}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="truncate text-xs font-semibold text-slate-900">
+                                        {u.name}
+                                      </span>
+                                      <span
+                                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
+                                          u.role
+                                        )}`}
+                                      >
+                                        {u.role}
+                                      </span>
+                                      {!u.active && (
+                                        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                          Joaktiv
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="truncate text-[11px] text-slate-500">
+                                      @{u.username}
+                                      {u.specialty ? ` • ${u.specialty}` : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleEditUser(u);
+                                    setTab('team');
+                                  }}
+                                  className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                >
+                                  Ndrysho
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
