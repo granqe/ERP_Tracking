@@ -49,6 +49,7 @@ interface WorkBoardProps {
   onOverridePriority: (ticketId: string, priority: TicketPriority) => void;
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
   onChangeDepartment: (ticketId: string, department: string | null) => void;
+  onChangeModule: (ticketId: string, moduleName: string) => void;
 }
 
 export const WorkBoard: React.FC<WorkBoardProps> = ({
@@ -68,6 +69,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
   onOverridePriority,
   onSetDeadline,
   onChangeDepartment,
+  onChangeModule,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
@@ -628,9 +630,34 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                       </td>
 
                       <td className="py-3.5 px-3 whitespace-nowrap">
-                        <p className="text-xs font-semibold text-slate-800">
-                          {t.module}
-                        </p>
+                        {isPm ? (
+                          <select
+                            value={t.module}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              onChangeModule(t.id, e.target.value)
+                            }
+                            title="Ndrysho modulin e ERP-së"
+                            className="block max-w-[190px] rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-semibold text-slate-800 hover:border-blue-400 focus:border-blue-500 focus:bg-white focus:outline-none"
+                          >
+                            {Array.from(
+                              new Set([
+                                ...modules.map((m) => m.name),
+                                ...(t.module ? [t.module] : []),
+                              ])
+                            )
+                              .filter(Boolean)
+                              .map((mName) => (
+                                <option key={mName} value={mName}>
+                                  {mName}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <p className="text-xs font-semibold text-slate-800">
+                            {t.module}
+                          </p>
+                        )}
                         <span
                           className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${getTypeBadgeClass(
                             t.type

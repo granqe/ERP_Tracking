@@ -30,6 +30,7 @@ import {
   sendEmailNotification,
   setTicketDeadline,
   setTicketDepartment,
+  setTicketModule,
   subscribeRealtime,
   transitionTicketStatus,
   upsertDepartment,
@@ -592,6 +593,20 @@ export function App() {
     );
   };
 
+  const handleChangeModule = async (ticketId: string, moduleName: string) => {
+    if (!currentUser) return;
+    const { ticket: updated, event } = await setTicketModule(
+      ticketId,
+      moduleName,
+      currentUser
+    );
+    setTickets((prev) =>
+      prev.map((t) => (t.id === updated.id ? updated : t))
+    );
+    setEvents((prev) => [event, ...prev]);
+    showToast(`Moduli i tiketës u ndryshua në "${updated.module}".`);
+  };
+
   const handleAddComment = async (ticketId: string, message: string) => {
     if (!currentUser) return;
     const ev = await addComment(ticketId, message, currentUser);
@@ -938,6 +953,7 @@ export function App() {
             onOverridePriority={handleOverridePriority}
             onSetDeadline={handleSetDeadline}
             onChangeDepartment={handleChangeDepartment}
+            onChangeModule={handleChangeModule}
           />
         )}
       </main>
@@ -958,6 +974,7 @@ export function App() {
         currentUser={currentUser}
         users={users}
         departments={departments}
+        modules={modules}
         events={events}
         onClose={() => setSelectedTicketId(null)}
         onStatusChange={handleStatusChange}
@@ -968,6 +985,7 @@ export function App() {
         onOverridePriority={handleOverridePriority}
         onSetDeadline={handleSetDeadline}
         onChangeDepartment={handleChangeDepartment}
+        onChangeModule={handleChangeModule}
         onAddComment={handleAddComment}
       />
 

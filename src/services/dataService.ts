@@ -341,6 +341,22 @@ export async function setTicketDepartment(
   );
 }
 
+export async function setTicketModule(
+  ticketId: string,
+  moduleName: string,
+  actor: User
+): Promise<{ ticket: Ticket; event: TicketEvent }> {
+  const cleanMod = moduleName.trim();
+  const msg = `${actor.name} ndryshoi modulin e ERP-së në "${cleanMod}".`;
+  return updateTicketFields(
+    ticketId,
+    { module: cleanMod },
+    actor,
+    'status_change',
+    msg
+  );
+}
+
 export async function addComment(
   ticketId: string,
   text: string,

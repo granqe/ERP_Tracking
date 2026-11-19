@@ -13,6 +13,7 @@ import {
 import { TICKET_PRIORITIES } from '../types';
 import type {
   Department,
+  ErpModule,
   Ticket,
   TicketEvent,
   TicketPriority,
@@ -35,6 +36,7 @@ interface TicketDetailDrawerProps {
   currentUser: User;
   users: User[];
   departments: Department[];
+  modules: ErpModule[];
   events: TicketEvent[];
   onClose: () => void;
   onStatusChange: (ticket: Ticket, newStatus: TicketStatus) => void;
@@ -45,6 +47,7 @@ interface TicketDetailDrawerProps {
   onOverridePriority: (ticketId: string, priority: TicketPriority) => void;
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
   onChangeDepartment: (ticketId: string, department: string | null) => void;
+  onChangeModule: (ticketId: string, moduleName: string) => void;
   onAddComment: (ticketId: string, message: string) => Promise<void>;
 }
 
@@ -53,6 +56,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   currentUser,
   users,
   departments,
+  modules,
   events,
   onClose,
   onStatusChange,
@@ -63,6 +67,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   onOverridePriority,
   onSetDeadline,
   onChangeDepartment,
+  onChangeModule,
   onAddComment,
 }) => {
   const [commentText, setCommentText] = useState('');
@@ -236,9 +241,30 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               <span className="block text-[11px] font-medium text-slate-400">
                 Moduli i ERP-së
               </span>
-              <span className="mt-0.5 inline-block text-sm font-semibold text-slate-900">
-                {ticket.module}
-              </span>
+              {isPm ? (
+                <select
+                  value={ticket.module}
+                  onChange={(e) => onChangeModule(ticket.id, e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                >
+                  {Array.from(
+                    new Set([
+                      ...modules.map((m) => m.name),
+                      ...(ticket.module ? [ticket.module] : []),
+                    ])
+                  )
+                    .filter(Boolean)
+                    .map((mName) => (
+                      <option key={mName} value={mName}>
+                        {mName}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <span className="mt-0.5 inline-block text-sm font-semibold text-slate-900">
+                  {ticket.module}
+                </span>
+              )}
             </div>
 
             <div>
