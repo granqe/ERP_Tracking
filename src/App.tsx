@@ -22,6 +22,7 @@ import {
   DEFAULT_EMAIL_SETTINGS,
   deleteDepartment,
   deleteErpModule,
+  deleteTicket,
   deleteUser,
   loadAllData,
   loadEmailSettings,
@@ -607,6 +608,16 @@ export function App() {
     showToast(`Moduli i tiketës u ndryshua në "${updated.module}".`);
   };
 
+  const handleDeleteTicket = async (ticketId: string) => {
+    await deleteTicket(ticketId);
+    setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+    setEvents((prev) => prev.filter((e) => e.ticket_id !== ticketId));
+    if (selectedTicketId === ticketId) {
+      setSelectedTicketId(null);
+    }
+    showToast('Tiketa u fshi nga sistemi.');
+  };
+
   const handleAddComment = async (ticketId: string, message: string) => {
     if (!currentUser) return;
     const ev = await addComment(ticketId, message, currentUser);
@@ -954,6 +965,7 @@ export function App() {
             onSetDeadline={handleSetDeadline}
             onChangeDepartment={handleChangeDepartment}
             onChangeModule={handleChangeModule}
+            onDeleteTicket={handleDeleteTicket}
           />
         )}
       </main>
@@ -986,6 +998,7 @@ export function App() {
         onSetDeadline={handleSetDeadline}
         onChangeDepartment={handleChangeDepartment}
         onChangeModule={handleChangeModule}
+        onDeleteTicket={handleDeleteTicket}
         onAddComment={handleAddComment}
       />
 

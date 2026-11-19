@@ -7,6 +7,7 @@ import {
   MessageSquare,
   RotateCcw,
   Send,
+  Trash2,
   User as UserIcon,
   X,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ interface TicketDetailDrawerProps {
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
   onChangeDepartment: (ticketId: string, department: string | null) => void;
   onChangeModule: (ticketId: string, moduleName: string) => void;
+  onDeleteTicket: (ticketId: string) => Promise<void>;
   onAddComment: (ticketId: string, message: string) => Promise<void>;
 }
 
@@ -68,10 +70,12 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
   onSetDeadline,
   onChangeDepartment,
   onChangeModule,
+  onDeleteTicket,
   onAddComment,
 }) => {
   const [commentText, setCommentText] = useState('');
   const [posting, setPosting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!ticket) return null;
 
@@ -139,13 +143,49 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               {ticket.title}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/70 hover:text-slate-700"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isPm &&
+              (confirmDelete ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await onDeleteTicket(ticket.id);
+                      setConfirmDelete(false);
+                    }}
+                    className="rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                  >
+                    Konfirmo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    Jo
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="rounded-lg border border-slate-200 bg-white p-1.5 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                  title="Fshi tiketën"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              ))}
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmDelete(false);
+                onClose();
+              }}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/70 hover:text-slate-700"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}

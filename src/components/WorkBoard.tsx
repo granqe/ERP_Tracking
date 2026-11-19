@@ -8,6 +8,7 @@ import {
   Lock,
   RotateCcw,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import {
@@ -50,6 +51,7 @@ interface WorkBoardProps {
   onSetDeadline: (ticketId: string, deadline: string | null) => void;
   onChangeDepartment: (ticketId: string, department: string | null) => void;
   onChangeModule: (ticketId: string, moduleName: string) => void;
+  onDeleteTicket: (ticketId: string) => Promise<void>;
 }
 
 export const WorkBoard: React.FC<WorkBoardProps> = ({
@@ -70,8 +72,12 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
   onSetDeadline,
   onChangeDepartment,
   onChangeModule,
+  onDeleteTicket,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [confirmDeleteTicketId, setConfirmDeleteTicketId] = useState<
+    string | null
+  >(null);
 
   const developers = users.filter((u) => u.role === 'Programer' && u.active);
   const isPm = currentUser.role === 'Menaxher';
@@ -773,48 +779,82 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                         className="py-3.5 px-4 whitespace-nowrap text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {(isDev || isPm) &&
-                        t.status !== 'Mbyllur (Konfirmuar)' &&
-                        t.status !==
-                          'Kryer nga Programeri (Gati për Testim)' ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            {t.status === 'Në Pritje (Backlog)' && (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {(isDev || isPm) &&
+                          t.status !== 'Mbyllur (Konfirmuar)' &&
+                          t.status !==
+                            'Kryer nga Programeri (Gati për Testim)' ? (
+                            <>
+                              {t.status === 'Në Pritje (Backlog)' && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onStatusChange(t, 'Në Punë (In Progress)')
+                                  }
+                                  className="rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                                >
+                                  Fillo
+                                </button>
+                              )}
+                              {t.status !== 'Bllokuar (Blocked)' && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenBlockModal(t)}
+                                  className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                                >
+                                  Bllokuar
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={() =>
-                                  onStatusChange(t, 'Në Punë (In Progress)')
-                                }
-                                className="rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                                onClick={() => onOpenResolveModal(t)}
+                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700"
                               >
-                                Fillo
+                                Konfirmo Kryerjen
                               </button>
-                            )}
-                            {t.status !== 'Bllokuar (Blocked)' && (
-                              <button
-                                type="button"
-                                onClick={() => onOpenBlockModal(t)}
-                                className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-                              >
-                                Bllokuar
-                              </button>
-                            )}
+                            </>
+                          ) : (
                             <button
                               type="button"
-                              onClick={() => onOpenResolveModal(t)}
-                              className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700"
+                              onClick={() => onOpenTicket(t)}
+                              className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
                             >
-                              Konfirmo Kryerjen
+                              Detajet
                             </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => onOpenTicket(t)}
-                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-                          >
-                            Detajet
-                          </button>
-                        )}
+                          )}
+
+                          {isPm &&
+                            (confirmDeleteTicketId === t.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await onDeleteTicket(t.id);
+                                    setConfirmDeleteTicketId(null);
+                                  }}
+                                  className="rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-700"
+                                >
+                                  Konfirmo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteTicketId(null)}
+                                  className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                                >
+                                  Jo
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteTicketId(t.id)}
+                                className="rounded-lg border border-slate-200 p-1 text-rose-500 hover:bg-rose-50 hover:border-rose-200"
+                                title="Fshi tiketën"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            ))}
+                        </div>
                       </td>
                     </tr>
                   );

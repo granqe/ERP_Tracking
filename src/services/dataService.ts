@@ -357,6 +357,12 @@ export async function setTicketModule(
   );
 }
 
+export async function deleteTicket(ticketId: string): Promise<void> {
+  const client = requireSupabase();
+  const { error } = await client.from('tickets').delete().eq('id', ticketId);
+  if (error) throw error;
+}
+
 export async function addComment(
   ticketId: string,
   text: string,
