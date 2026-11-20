@@ -100,19 +100,20 @@ export const TopBar: React.FC<TopBarProps> = ({
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto max-w-[1600px] px-3 sm:px-6 lg:px-10 xl:px-14">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3">
-          {/* Brand + Nav */}
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-5">
-            <div className="flex shrink-0 items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
+          {/* Brand + Desktop Nav */}
+          <div className="flex min-w-0 items-center gap-2.5 lg:gap-4">
+            <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
                 <ShieldCheck className="h-5 w-5 text-blue-400" />
               </div>
-              <span className="hidden whitespace-nowrap text-sm font-bold leading-none text-slate-900 lg:inline">
-                ERP Migrim & Gjurmues
+              <span className="truncate whitespace-nowrap text-sm font-bold leading-none text-slate-900 lg:hidden xl:inline">
+                ERP Migrim
+                <span className="hidden sm:inline"> &amp; Gjurmues</span>
               </span>
             </div>
 
-            {/* Navigation Tabs */}
-            <nav className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+            {/* Desktop Navigation Tabs */}
+            <nav className="hidden lg:flex items-center gap-1 rounded-xl bg-slate-100 p-1">
               {currentUser.role === 'Menaxher' && (
                 <button
                   type="button"
@@ -121,7 +122,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   title="Pamja e Menaxherit"
                 >
                   <LayoutDashboard className={iconCls} />
-                  <span className="hidden md:inline">Pamja e Menaxherit</span>
+                  <span>Pamja e Menaxherit</span>
                 </button>
               )}
 
@@ -131,7 +132,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 className={`${tabBtn(activeTab === 'work_board')}`}
               >
                 <Kanban className={iconCls} />
-                <span className="hidden sm:inline">
+                <span>
                   {currentUser.role === 'Staf'
                     ? 'Kërkesat e Mia'
                     : currentUser.role === 'Programer'
@@ -149,7 +150,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   title="Analiza AI"
                 >
                   <Sparkles className={iconCls} />
-                  <span className="hidden sm:inline">Analiza AI</span>
+                  <span>Analiza AI</span>
                 </button>
               )}
 
@@ -161,14 +162,14 @@ export const TopBar: React.FC<TopBarProps> = ({
                   title="Përdoruesit & Modulet"
                 >
                   <Users className={iconCls} />
-                  <span className="hidden md:inline">Përdoruesit & Modulet</span>
+                  <span>Përdoruesit &amp; Modulet</span>
                 </button>
               )}
             </nav>
           </div>
 
           {/* Right Actions: New Ticket + Notifications + User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={onOpenNewTicket}
@@ -295,11 +296,11 @@ export const TopBar: React.FC<TopBarProps> = ({
                 >
                   {getInitials(currentUser.name)}
                 </span>
-                <span className="hidden text-sm font-semibold text-slate-900 md:inline">
+                <span className="hidden text-sm font-semibold text-slate-900 xl:inline">
                   {currentUser.name}
                 </span>
                 <span
-                  className={`hidden rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none md:inline ${getRoleBadgeClass(
+                  className={`hidden rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none xl:inline ${getRoleBadgeClass(
                     currentUser.role
                   )}`}
                 >
@@ -375,6 +376,75 @@ export const TopBar: React.FC<TopBarProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Mobile / Tablet Navigation Row */}
+        <nav
+          aria-label="Navigimi kryesor"
+          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 py-2 lg:hidden"
+        >
+          {currentUser.role === 'Menaxher' && (
+            <button
+              type="button"
+              onClick={() => onTabChange('pm_overview')}
+              className={`inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                activeTab === 'pm_overview'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
+              }`}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+              <span className="sm:hidden">Menaxheri</span>
+              <span className="hidden sm:inline">Pamja e Menaxherit</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onTabChange('work_board')}
+            className={`inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === 'work_board'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
+            }`}
+          >
+            <Kanban className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {currentUser.role === 'Staf'
+                ? 'Kërkesat e Mia'
+                : currentUser.role === 'Programer'
+                ? 'Detyrat e Mia'
+                : 'Tabela e Punës'}
+            </span>
+          </button>
+
+          {(currentUser.role === 'Menaxher' ||
+            currentUser.role === 'Programer') && (
+            <button
+              type="button"
+              onClick={() => onTabChange('ai_insights')}
+              className={`inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                activeTab === 'ai_insights'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
+              <span>Analiza AI</span>
+            </button>
+          )}
+
+          {currentUser.role === 'Menaxher' && (
+            <button
+              type="button"
+              onClick={onOpenTeamModal}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200/80"
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              <span className="sm:hidden">Përdoruesit</span>
+              <span className="hidden sm:inline">Përdoruesit &amp; Modulet</span>
+            </button>
+          )}
+        </nav>
       </div>
 
       {pwModalOpen && (
