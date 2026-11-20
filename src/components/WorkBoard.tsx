@@ -865,7 +865,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
         </div>
       ) : (
         /* KANBAN VIEW */
-        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory custom-scrollbar">
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory custom-scrollbar lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-x-visible lg:pb-0 lg:snap-none">
           {TICKET_STATUSES.map((statusCol) => {
             const colTickets = filteredTickets.filter(
               (t) => t.status === statusCol
@@ -873,36 +873,37 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
             return (
               <div
                 key={statusCol}
-                className="w-[84vw] sm:w-80 shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-100/80 p-3 flex flex-col max-h-[75vh]"
+                className="w-[84vw] sm:w-80 lg:w-auto lg:min-w-0 shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-100/80 p-3 lg:p-2.5 xl:p-3 flex flex-col max-h-[75vh]"
               >
-                <div className="flex items-center justify-between gap-2 px-1 pb-3">
+                <div className="flex items-center justify-between gap-1.5 px-1 pb-2.5 min-w-0">
                   <span
-                    className={`rounded-lg px-2.5 py-1 text-xs font-bold ${getStatusBadgeClass(
+                    title={statusCol}
+                    className={`truncate rounded-lg px-2 py-1 text-[11px] xl:text-xs font-bold ${getStatusBadgeClass(
                       statusCol
                     )}`}
                   >
                     {statusCol}
                   </span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-600 border border-slate-200">
+                  <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-600 border border-slate-200">
                     {colTickets.length}
                   </span>
                 </div>
 
-                <div className="space-y-2.5 overflow-y-auto custom-scrollbar pr-1">
+                <div className="space-y-2.5 overflow-y-auto custom-scrollbar pr-0.5">
                   {colTickets.map((t) => {
                     const dev = users.find((u) => u.id === t.assigned_to);
                     return (
                       <div
                         key={t.id}
                         onClick={() => onOpenTicket(t)}
-                        className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-blue-400 hover:shadow-sm"
+                        className="min-w-0 cursor-pointer rounded-xl border border-slate-200 bg-white p-3 xl:p-3.5 shadow-xs transition hover:border-blue-400 hover:shadow-sm"
                       >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                          <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
                             {t.code}
                           </span>
                           <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${getPriorityBadgeClass(
+                            className={`truncate rounded px-1.5 py-0.5 text-[10px] font-semibold ${getPriorityBadgeClass(
                               t.priority
                             )}`}
                           >
@@ -910,32 +911,32 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                           </span>
                         </div>
 
-                        <h4 className="text-xs font-bold text-slate-900 leading-snug mb-2">
+                        <h4 className="text-xs font-bold text-slate-900 leading-snug mb-1.5 break-words">
                           {t.title}
                         </h4>
 
-                        <p className="text-[11px] font-medium text-slate-500 mb-2">
+                        <p className="truncate text-[11px] font-medium text-slate-500 mb-2">
                           {t.module}
                         </p>
 
                         {t.blocker_reason && (
-                          <div className="mb-2 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-800">
+                          <div className="mb-2 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-800 break-words">
                             <strong>Bllokuar:</strong> {t.blocker_reason}
                           </div>
                         )}
 
                         {renderStaffUatBanner(t)}
 
-                        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5">
                           {dev ? (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex min-w-0 items-center gap-1.5">
                               <span
-                                className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold text-white"
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[9px] font-bold text-white"
                                 style={{ backgroundColor: dev.avatar_color }}
                               >
                                 {getInitials(dev.name)}
                               </span>
-                              <span className="text-[11px] text-slate-600">
+                              <span className="truncate text-[11px] text-slate-600">
                                 {dev.name}
                               </span>
                             </div>
@@ -955,7 +956,7 @@ export const WorkBoard: React.FC<WorkBoardProps> = ({
                                   e.stopPropagation();
                                   onOpenResolveModal(t);
                                 }}
-                                className="rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-emerald-700"
+                                className="shrink-0 rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-emerald-700"
                               >
                                 Konfirmo Kryerjen
                               </button>
